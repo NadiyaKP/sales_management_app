@@ -11,10 +11,8 @@ import '../../services/api_service.dart';
 import '../../services/permission.dart';
 import '../../common/bottom_navigation_button.dart';
 import '../../common/pagination.dart';
-import '../home_page.dart';
-import '../report_page.dart';
 import 'new_receipt_page.dart';
-import 'receipt_view.dart'; 
+import 'receipt_view.dart';
 
 // Receipt permission variables
 String receiptAdd = '';
@@ -94,7 +92,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
   final int maxVisiblePages = 3;
   
   List<Receipts> _receipts = [];
-  List<Receipts> filteredReceipts = [];
   int receiptsTotal = 0;
   bool isLoading = false;
 
@@ -126,7 +123,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     super.dispose();
   }
 
-  // Load permissions from API
   Future<void> _loadPermissions() async {
     try {
       final permissionResponse = await _fetchPermissions();
@@ -170,7 +166,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     }
   }
 
-  // Load customers from API
   Future<void> loadCustomers() async {
     try {
       List<Map<String, String>> customers = await apiServices.fetchCustomers();
@@ -184,7 +179,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     }
   }
 
-  // Load wallets from API
   Future<void> loadWallets() async {
     try {
       List<Map<String, String>> wallet = await apiServices.fetchWallets();
@@ -197,40 +191,45 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     }
   }
 
-  // Fetch receipts from API
   Future<void> fetchReceipts() async {
     if (!mounted) return;
     setState(() {
       isLoading = true;
     });
-    
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? url = prefs.getString('url');
     String? unid = prefs.getString('unid');
     String? slex = prefs.getString('slex');
-    
+
+    final requestBody = {
+      "unid": unid,
+      "slex": slex,
+      "srch": searchQuery,
+      "page": currentPage.toString(),
+    };
+
     try {
+      debugPrint("📤 API REQUEST [Receipts]: $requestBody");
+
       final response = await http.post(
         Uri.parse('$url/receipts.php'),
         headers: {
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          "unid": unid,
-          "slex": slex,
-          "srch": searchQuery,
-          "page": currentPage.toString(),
-        }),
+        body: jsonEncode(requestBody),
       );
-      
+
+      debugPrint("📥 API RESPONSE [Receipts]: ${response.body}");
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['result'] == "1") {
-          receiptsTotal = data['ttlreceipts'] ?? 0;
+          // FIX: Parse string to int for ttlreceipts
+          receiptsTotal = int.tryParse(data['ttlreceipts']?.toString() ?? '0') ?? 0;
           final List<dynamic> receiptsList = data['receiptdet'] ?? [];
           setState(() {
             _receipts = receiptsList.map((json) => Receipts.fromJson(json)).toList();
-            filteredReceipts = _receipts;
           });
           if (receiptsList.isEmpty) {
             _showError('No receipts data found');
@@ -242,6 +241,7 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
         _showError('Error: ${response.statusCode}');
       }
     } catch (error) {
+      debugPrint("❌ API ERROR [Receipts]: $error");
       _showError('An error occurred: $error');
     } finally {
       if (mounted) {
@@ -252,7 +252,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     }
   }
 
-  // Save/Update/Delete receipt data
   Future<Map<String, dynamic>> _saveReceiptData(String action,
       {String? rcpId, String reason = ""}) async {
     try {
@@ -278,11 +277,15 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
         }
       }
 
+      debugPrint("📤 API REQUEST [SaveReceiptData]: $requestBody");
+
       final response = await http.post(
         Uri.parse('$url/action/receipt.php'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(requestBody),
       );
+
+      debugPrint("📥 API RESPONSE [SaveReceiptData]: ${response.body}");
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -290,11 +293,11 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
         return {"result": "0", "message": "Failed to process receipt"};
       }
     } catch (e) {
+      debugPrint("❌ API ERROR [SaveReceiptData]: $e");
       return {"result": "0", "message": "Network error: $e"};
     }
   }
 
-  //  WhatsApp functionality to navigate to WhatsApp chat
   void openWhatsAppChat(BuildContext context, Receipts receipt) async {
     String phoneNumber = receipt.whatsappNo.trim();
 
@@ -303,10 +306,9 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
       return;
     }
 
-    // Create WhatsApp URL to open chat without pre-filled message
     final link = WhatsAppUnilink(
       phoneNumber: phoneNumber,
-      text: '', // Empty text to just open the chat
+      text: '',
     );
 
     final Uri whatsappUrl = Uri.parse(link.toString());
@@ -323,14 +325,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     }
   }
 
-  List<Receipts> get currentPageReceipts {
-    final start = (currentPage - 1) * itemsPerPage;
-    final end = (start + itemsPerPage > filteredReceipts.length)
-        ? filteredReceipts.length
-        : start + itemsPerPage;
-    return filteredReceipts.sublist(start, end);
-  }
-
   void _onPageChanged(int newPage) {
     setState(() {
       currentPage = newPage;
@@ -341,38 +335,41 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
   void _showSearchDialog() {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Search'),
-        content: TextField(
-          controller: _searchController,
-          decoration: const InputDecoration(hintText: 'Enter receipt no or name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _searchController.clear();
-              setState(() {
-                searchQuery = '';
-                currentPage = 1;
-              });
-              fetchReceipts();
-            },
-            child: const Text('Clear'),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Search'),
+          content: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(hintText: 'Enter receipt no or name'),
+            autofocus: true,
           ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                searchQuery = _searchController.text;
-                currentPage = 1;
-              });
-              Navigator.of(context).pop();
-              fetchReceipts();
-            },
-            child: const Text('Search'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _searchController.clear();
+                setState(() {
+                  searchQuery = '';
+                  currentPage = 1;
+                });
+                fetchReceipts();
+              },
+              child: const Text('Clear'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  searchQuery = _searchController.text;
+                  currentPage = 1;
+                });
+                Navigator.of(context).pop();
+                fetchReceipts();
+              },
+              child: const Text('Search'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -383,7 +380,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     );
 
     if (result != null) {
-      // Refresh receipts after adding new one
       fetchReceipts();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('New receipt added successfully!')),
@@ -391,9 +387,7 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     }
   }
 
-  
   void _editReceipt(Receipts receipt) async {
-    //receipt data for editing - matching NewReceiptPage editData parameter
     final editData = {
       'rcpId': receipt.rcpId,
       'customerName': receipt.name,
@@ -403,11 +397,9 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
       'paymentMethod': receipt.wallet,
       'walletId': receipt.walletId ?? walletIdMap[receipt.wallet] ?? '',
       'notes': receipt.notes,
-      // Ensure due amount is properly formatted and never empty
       'dueAmount': _formatDueAmount(receipt.dueAmount),
     };
 
-    // Navigate to NewReceiptPage with editData
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -415,10 +407,8 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
       ),
     );
 
-    // Handle the result returned from NewReceiptPage
     if (result != null && result is Map<String, dynamic>) {
       if (result['success'] == true) {
-        // Refresh the receipts list to show updated data
         fetchReceipts();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -427,7 +417,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
           ),
         );
       } else {
-        // Handle update failure if needed
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Failed to update receipt. Please try again.'),
@@ -439,7 +428,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
   }
 
   void _viewReceipt(Receipts receipt) async {
-    // Navigate to ReceiptView page with the receipt data
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -454,7 +442,7 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Receipt', style: TextStyle(color: Colors.red)),
+        title: const Text('Delete Receipt', style: TextStyle(color: Colors.red, fontSize: 16)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -462,18 +450,21 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
             children: [
               const Text(
                 'Are you sure you want to delete this receipt?',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _buildDialogRow('Receipt No:', receipt.receiptsNo),
               _buildDialogRow('Name:', receipt.name),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               if (receiptDeleteReason == "yes")
                 TextField(
                   controller: reasonController,
+                  style: const TextStyle(fontSize: 12),
                   decoration: const InputDecoration(
                     labelText: 'Reason',
+                    labelStyle: TextStyle(fontSize: 12),
                     border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   ),
                   maxLines: 2,
                 ),
@@ -482,7 +473,7 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
         ),
         actions: [
           SizedBox(
-            height: 32,
+            height: 30,
             child: TextButton(
               onPressed: () => Navigator.pop(context),
               style: TextButton.styleFrom(
@@ -490,14 +481,13 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Cancel', style: TextStyle(fontSize: 13)),
+              child: const Text('Cancel', style: TextStyle(fontSize: 11)),
             ),
           ),
           SizedBox(
-            height: 32,
+            height: 30,
             child: ElevatedButton(
               onPressed: () async {
-                
                 if (receiptDeleteReason == "yes" && reasonController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Please provide a reason for deletion')),
@@ -507,7 +497,6 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
                 
                 Navigator.pop(context);
                 
-                // Call API to delete receipt
                 Map<String, dynamic> result = await _saveReceiptData(
                   'delete',
                   rcpId: receipt.rcpId,
@@ -530,7 +519,7 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Delete', style: TextStyle(fontSize: 13)),
+              child: const Text('Delete', style: TextStyle(fontSize: 11)),
             ),
           ),
         ],
@@ -543,8 +532,11 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-        
-          content: const Text("Are you sure that you want to delete the receipt?"),
+          title: const Text('Delete Receipt', style: TextStyle(color: Colors.red, fontSize: 16)),
+          content: const Text(
+            "Are you sure that you want to delete the receipt?",
+            style: TextStyle(fontSize: 13),
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () async {
@@ -565,7 +557,7 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
                   Navigator.pop(dialogContext);
                 }
               },
-              child: const Text("Delete"),
+              child: const Text("Delete", style: TextStyle(fontSize: 11)),
             ),
             const SizedBox(width: 8),
             TextButton(
@@ -574,7 +566,7 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
                   Navigator.pop(dialogContext);
                 }
               },
-              child: const Text("Close"),
+              child: const Text("Close", style: TextStyle(fontSize: 11)),
             ),
           ],
         );
@@ -583,39 +575,59 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
   }
 
   Widget _buildDialogRow(String label, String value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.right,
-            maxLines: 1, // Ensure single line
-            overflow: TextOverflow.ellipsis, // Add ellipsis if text is too long
-            softWrap: false, // Prevent text wrapping
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
           ),
-        ),
-      ],
-    ),
-  );
-}
-  // Helper method to format due amount properly
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDueAmount(String? dueAmount) {
     if (dueAmount == null || dueAmount.isEmpty) {
       return '0.00';
     }
-    
-    // Parse and reformat to ensure valid decimal format
     double amount = parseFormattedAmount(dueAmount);
     return amount.toStringAsFixed(2);
+  }
+
+  DateTime? _parseDate(String dateStr) {
+    try {
+      if (dateStr.contains('-')) {
+        return DateTime.parse(dateStr);
+      } else if (dateStr.contains('/')) {
+        List<String> parts = dateStr.split('/');
+        if (parts.length == 3) {
+          return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  String _formatDate(String dateStr) {
+    DateTime? date = _parseDate(dateStr);
+    if (date != null) {
+      return DateFormat('dd-MM-yyyy').format(date);
+    }
+    return dateStr;
   }
 
   void _showError(String message) {
@@ -636,12 +648,12 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading && filteredReceipts.isEmpty) {
+    if (isLoading && _receipts.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('RECEIPTS'),
-          centerTitle: true,
+          title: const Text('Receipts'),
           backgroundColor: AppTheme.primaryColor,
+          centerTitle: true,
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -649,9 +661,9 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('RECEIPTS'),
-        centerTitle: true,
+        title: const Text('Receipts'),
         backgroundColor: AppTheme.primaryColor,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -662,82 +674,303 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
       body: Column(
         children: [
           Expanded(
-            child: currentPageReceipts.isEmpty
-                ? const Center(child: Text('No receipts found.'))
+            child: _receipts.isEmpty
+                ? const Center(child: Text("No receipts found.", style: TextStyle(fontSize: 16)))
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: currentPageReceipts.length,
+                    padding: const EdgeInsets.all(8),
+                    itemCount: _receipts.length,
                     itemBuilder: (context, index) {
-                      final receipt = currentPageReceipts[index];
+                      final receipt = _receipts[index];
                       return Card(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        elevation: 3,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                        elevation: 1,
+                        margin: const EdgeInsets.only(bottom: 6),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                          ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'No: ${receipt.receiptsNo}',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              // Header Section with Receipt Number and Date
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(6),
+                                    topRight: Radius.circular(6),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Receipt No: ${receipt.receiptsNo}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color.fromARGB(255, 5, 38, 76),
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          _formatDate(receipt.date),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 10),
-                              _buildRow('Name', capitalizeWords(receipt.name)),
-                              _buildRow('Date', receipt.date),
-                              _buildRow('Wallet', capitalizeWords(receipt.wallet)),
-                              _buildRow('Notes', receipt.notes.isEmpty ? 'No notes' : receipt.notes),
-                              _buildRow('Received', receipt.amount, color: Colors.green.shade700),
-                              if (receipt.dueAmount != null && receipt.dueAmount!.isNotEmpty)
-                                _buildRow('Due Amount', receipt.dueAmount!, color: Colors.red.shade700),
-                              const SizedBox(height: 16),
-                              // Action buttons in a single row with proper spacing
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (receiptEdit == "yes" && receipt.confirm == "verification_pending")
-                                    _buildActionButton(
-                                      icon: Icons.edit,
-                                      label: 'Edit',
-                                      backgroundColor: const Color.fromARGB(255, 5, 38, 76),
-                                      onPressed: () => _editReceipt(receipt),
+                              
+                              // Content Section
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Column(
+                                  children: [
+                                    // Customer Name Section
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.person,
+                                          size: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            receipt.name,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  if (receiptEdit == "yes" && receipt.confirm == "verification_pending")
-                                    const SizedBox(width: 6),
-                                  if (receiptView == "yes")
-                                    _buildActionButton(
-                                      icon: Icons.visibility,
-                                      label: 'View',
-                                      backgroundColor: const Color.fromARGB(255, 5, 38, 76),
-                                      onPressed: () => _viewReceipt(receipt),
+                                    
+                                    const SizedBox(height: 6),
+                                    
+                                    // Wallet and Received Amount Section
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          // Wallet Section
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Wallet',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey.shade600,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  receipt.wallet,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          
+                                          // Vertical divider
+                                          Container(
+                                            height: 20,
+                                            width: 1,
+                                            color: Colors.grey.shade300,
+                                          ),
+                                          
+                                          // Received Amount Section
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  'Received',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey.shade600,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  receipt.amount,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.green.shade700,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  if (receiptView == "yes")
-                                    const SizedBox(width: 6),
-                                  if (receiptWhatsapp == "yes")
-                                    _buildActionButton(
-                                      icon: Icons.message,
-                                      label: 'WhatsApp',
-                                      backgroundColor: Colors.green.shade700,
-                                      onPressed: () => openWhatsAppChat(context, receipt),
+                                    
+                                    // Due Amount Section (if available)
+                                    if (receipt.dueAmount != null && receipt.dueAmount!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Due',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.grey.shade600,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    receipt.dueAmount!,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.red.shade700,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                    
+                                    const SizedBox(height: 6),
+                                    
+                                    // Action Buttons Section
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        if (receiptView == "yes")
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            onPressed: () {
+                                              _viewReceipt(receipt);
+                                            },
+                                            child: const Icon(Icons.visibility, size: 12, color: Colors.white),
+                                          ),
+                                        if (receiptView == "yes") const SizedBox(width: 6),
+                                        if (receiptEdit == "yes" && receipt.confirm == "verification_pending")
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            onPressed: () {
+                                              _editReceipt(receipt);
+                                            },
+                                            child: const Icon(Icons.edit, size: 12, color: Colors.white),
+                                          ),
+                                        if (receiptEdit == "yes" && receipt.confirm == "verification_pending") const SizedBox(width: 6),
+                                        if (receiptWhatsapp == "yes")
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green,
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            onPressed: () {
+                                              openWhatsAppChat(context, receipt);
+                                            },
+                                            child: const Icon(Icons.message, size: 12, color: Colors.white),
+                                          ),
+                                        if (receiptWhatsapp == "yes") const SizedBox(width: 6),
+                                        if (receiptDelete == "yes" && receipt.confirm == "verification_pending")
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red.shade600,
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            onPressed: () {
+                                              if (receiptDeleteReason == "yes") {
+                                                _deleteReceipt(receipt);
+                                              } else {
+                                                _simpleDeleteReceipt(receipt);
+                                              }
+                                            },
+                                            child: const Icon(Icons.delete, size: 12, color: Colors.white),
+                                          ),
+                                      ],
                                     ),
-                                  if (receiptWhatsapp == "yes" && receiptDelete == "yes" && receipt.confirm == "verification_pending")
-                                    const SizedBox(width: 6),
-                                  if (receiptDelete == "yes" && receipt.confirm == "verification_pending")
-                                    _buildActionButton(
-                                      icon: Icons.delete,
-                                      label: 'Delete',
-                                      backgroundColor: Colors.red.shade700,
-                                      onPressed: () {
-                                        if (receiptDeleteReason == "yes") {
-                                          _deleteReceipt(receipt);
-                                        } else {
-                                          _simpleDeleteReceipt(receipt);
-                                        }
-                                      },
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -760,63 +993,16 @@ class _ReceiptsPageState extends State<ReceiptsPage> {
           ? FloatingActionButton(
               onPressed: _navigateToNewReceiptPage,
               backgroundColor: AppTheme.primaryColor,
-              child: const Icon(Icons.add),
+              child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
       bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 0, 
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color backgroundColor,
-    required VoidCallback onPressed,
-  }) {
-    return Flexible(
-      child: ElevatedButton.icon(
-        icon: Icon(icon, size: 14, color: Colors.white),
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.white),
-          overflow: TextOverflow.ellipsis,
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        onPressed: onPressed,
-      ),
-    );
-  }
-
-  Widget _buildRow(String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w500)),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: color ?? Colors.black87,
-              ),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
+        selectedIndex: 0,
       ),
     );
   }
 }
 
-// Helper functions
 double parseFormattedAmount(String formattedAmount) {
   final cleanString = formattedAmount.replaceAll(',', '');
   return double.tryParse(cleanString) ?? 0.0;

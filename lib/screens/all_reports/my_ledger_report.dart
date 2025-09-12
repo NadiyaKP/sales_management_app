@@ -37,13 +37,13 @@ class MyLedgerReport {
   
   factory MyLedgerReport.fromJson(Map<String, dynamic> json) {
     return MyLedgerReport(
-      date: json['led_date'] ?? json['date'] ?? '', // Handle both possible field names
+      date: json['led_date'] ?? json['date'] ?? '', 
       voucherId: json['vcr_id'] ?? json['voucher_id'] ?? '',
       voucherNo: json['vcr_no'] ?? json['voucher_no'] ?? '',
       typeOfTransactions: json['type_of_trn'] ?? '',
       notes: json['notes'] ?? '',
-      debit: json['debit']?.toString() ?? '0.00', // Convert to string and handle null
-      credit: json['credit']?.toString() ?? '0.00', // Convert to string and handle null
+      debit: json['debit']?.toString() ?? '0.00', 
+      credit: json['credit']?.toString() ?? '0.00', 
       balance: json['bln_due'] ?? json['balance'] ?? '0.00',
     );
   }
@@ -77,7 +77,7 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
   void initState() {
     super.initState();
     _loadPermissions();
-    _fromDate = DateTime(DateTime.now().year, DateTime.now().month, 1); // First day of current month
+    _fromDate = DateTime(DateTime.now().year, DateTime.now().month, 1); 
     _toDate = DateTime.now();
     fetchMyLedger();
   }
@@ -282,23 +282,23 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
     double creditAmount = double.tryParse(credit) ?? 0.0;
     
     if (debitAmount > 0) {
-      return "+₹${debitAmount.toStringAsFixed(2)}";
+      return "+${debitAmount.toStringAsFixed(2)}";
     } else if (creditAmount > 0) {
       // For Opening Balance, credit should be shown as positive
       if (transactionType.toLowerCase().contains('opening')) {
-        return "+₹${creditAmount.toStringAsFixed(2)}";
+        return "+${creditAmount.toStringAsFixed(2)}";
       } else {
-        return "-₹${creditAmount.toStringAsFixed(2)}";
+        return "-${creditAmount.toStringAsFixed(2)}";
       }
     }
-    return "₹0.00";
+    return "0.00";
   }
 
-  // Helper method to format currency values
+  
   String formatCurrency(String? value) {
-    if (value == null || value.isEmpty) return "₹0.00";
+    if (value == null || value.isEmpty) return "0.00";
     double amount = double.tryParse(value) ?? 0.0;
-    return "₹${amount.toStringAsFixed(2)}";
+    return amount.toStringAsFixed(2);
   }
 
   @override
@@ -346,9 +346,12 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                         children: [
                           Text(
                             'From: ${_formatDate(_fromDate)}',
-                            style: TextStyle(color: Colors.grey.shade700),
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 12,
+                            ),
                           ),
-                          const Icon(Icons.calendar_today, size: 18),
+                          const Icon(Icons.calendar_today, size: 16),
                         ],
                       ),
                     ),
@@ -369,9 +372,12 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                         children: [
                           Text(
                             'To: ${_formatDate(_toDate)}',
-                            style: TextStyle(color: Colors.grey.shade700),
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 12,
+                            ),
                           ),
-                          const Icon(Icons.calendar_today, size: 18),
+                          const Icon(Icons.calendar_today, size: 16),
                         ],
                       ),
                     ),
@@ -407,13 +413,13 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                         'Closing Balance:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 12,
                         ),
                       ),
                       Text(
-                        closingBalance ?? "₹0.00",
+                        closingBalance ?? "0.00",
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.teal.shade700,
                         ),
@@ -423,13 +429,17 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Text('Total Credit:'),
+                      const Text(
+                        'Total Credit:',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       const Spacer(),
                       Text(
                         formatCurrency(totalCredit),
                         style: const TextStyle(
                           color: Colors.red,
                           fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -437,13 +447,17 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Text('Total Debit:'),
+                      const Text(
+                        'Total Debit:',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       const Spacer(),
                       Text(
                         formatCurrency(totalDebit),
                         style: const TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -455,7 +469,7 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                         const Text(
                           'Pending Received Cheque:',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 10,
                             color: Colors.blue,
                           ),
                         ),
@@ -463,7 +477,7 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                         Text(
                           formatCurrency(receivedCheque),
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.blue,
                           ),
@@ -478,7 +492,7 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                         const Text(
                           'Pending Given Cheque:',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 10,
                             color: Colors.blue,
                           ),
                         ),
@@ -486,7 +500,7 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                         Text(
                           formatCurrency(givenCheque),
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.blue,
                           ),
@@ -506,7 +520,7 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                   ? const Center(
                       child: Text(
                         'No reports available for the selected date range.',
-                        style: TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
                     )
@@ -517,107 +531,132 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
                         final transactionValue = formatTransactionValue(report.debit, report.credit, report.typeOfTransactions);
                         final isOdd = index % 2 != 0;
 
-                        return Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4.0),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isOdd ? Colors.grey.shade100 : Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                spreadRadius: 1,
-                                blurRadius: 2,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                            border: Border.all(
-                              color: Colors.teal.shade200,
-                              width: 1,
-                            ),
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      report.typeOfTransactions,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16.0,
-                                        color: Colors.indigo,
+                          elevation: 2,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        report.typeOfTransactions,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: Colors.indigo,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  Text(
-                                    transactionValue,
-                                    style: TextStyle(
-                                      fontSize: 20.0,
-                                      color: transactionValue.startsWith('+')
-                                          ? Colors.green
-                                          : Colors.red,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              // Show only debit (not individual credit)
-                              if (report.debit != "0.00" && report.debit.isNotEmpty) ...[
-                                Row(
-                                  children: [
-                                    const Text('Debit: ', style: TextStyle(fontWeight: FontWeight.w500)),
                                     Text(
-                                      formatCurrency(report.debit),
-                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                              ],
-                              if (report.balance.isNotEmpty) ...[
-                                Row(
-                                  children: [
-                                    const Text('Balance: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                                    Text(
-                                      report.balance,
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                              ],
-                              // Always show Date section (even if empty, it will show from date range)
-                              Row(
-                                children: [
-                                  const Text('Date: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                                  Text(
-                                    report.date.isNotEmpty ? report.date : 'N/A',
-                                    style: const TextStyle(color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              // Always show Notes section
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Notes: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                                  Expanded(
-                                    child: Text(
-                                      report.notes.isNotEmpty ? report.notes : 'No notes available',
+                                      transactionValue,
                                       style: TextStyle(
-                                        color: report.notes.isNotEmpty ? Colors.black87 : Colors.grey,
-                                        fontStyle: report.notes.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                                        fontSize: 14,
+                                        color: transactionValue.startsWith('+')
+                                            ? Colors.green
+                                            : Colors.red,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                // Show only debit (not individual credit)
+                                if (report.debit != "0.00" && report.debit.isNotEmpty) ...[
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Debit: ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      Text(
+                                        formatCurrency(report.debit),
+                                        style: const TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                  const SizedBox(height: 4),
                                 ],
-                              ),
-                            ],
+                                if (report.balance.isNotEmpty) ...[
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Balance: ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      Text(
+                                        report.balance,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                ],
+                                // Always show Date section
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Date: ',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      report.date.isNotEmpty ? report.date : '',
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Notes: ',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        report.notes.isNotEmpty ? report.notes : '',
+                                        style: TextStyle(
+                                          color: report.notes.isNotEmpty ? Colors.black87 : Colors.grey,
+                                          fontStyle: report.notes.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },

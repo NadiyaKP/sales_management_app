@@ -32,7 +32,6 @@ class _NewChequePageState extends State<NewChequePage> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _customerSearchController = TextEditingController(); 
   
-  // API-related variables
   List<String> customerNames = [];
   List<String> filteredCustomerNames = []; 
   String? selectedCustomer;
@@ -40,11 +39,9 @@ class _NewChequePageState extends State<NewChequePage> {
   Map<String, String> customerIdMap = {};
   bool isLoading = false;
   
-  // For edit mode
   String? chequeId;
   bool _dataInitialized = false;
   
-  //Customer dropdown state
   bool _showCustomerDropdown = false;
   final FocusNode _customerFocusNode = FocusNode();
   
@@ -52,31 +49,29 @@ class _NewChequePageState extends State<NewChequePage> {
   void initState() {
     super.initState();
     _chequeDateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
-    _customerSearchController.addListener(_filterCustomers); // customer filter listener
-    _customerFocusNode.addListener(_onCustomerFocusChange); //Add focus listener
+    _customerSearchController.addListener(_filterCustomers);
+    _customerFocusNode.addListener(_onCustomerFocusChange);
     _initializeData();
   }
 
   @override
   void dispose() {
     _customerSearchController.removeListener(_filterCustomers); 
-    _customerSearchController.dispose(); //  Dispose customer search controller
+    _customerSearchController.dispose();
     _customerFocusNode.removeListener(_onCustomerFocusChange); 
-    _customerFocusNode.dispose(); //  Dispose focus node
+    _customerFocusNode.dispose();
     _chequeDateController.dispose();
     _chequeNoController.dispose();
     _amountController.dispose();
     super.dispose();
   }
 
-  // Customer focus change handler
   void _onCustomerFocusChange() {
     setState(() {
       _showCustomerDropdown = _customerFocusNode.hasFocus && filteredCustomerNames.isNotEmpty;
     });
   }
 
-  // Filter customers based on search text
   void _filterCustomers() {
     String query = _customerSearchController.text.toLowerCase();
     setState(() {
@@ -91,7 +86,6 @@ class _NewChequePageState extends State<NewChequePage> {
     });
   }
 
-  // Handle customer selection from dropdown
   void _selectCustomer(String customerName) {
     setState(() {
       selectedCustomer = customerName;
@@ -108,10 +102,8 @@ class _NewChequePageState extends State<NewChequePage> {
     });
 
     try {
-      // Load customers first
       await loadCustomers();
 
-      // Then initialize existing cheque data if available
       if (widget.existingCheque != null && !_dataInitialized) {
         _initializeExistingChequeData();
         _dataInitialized = true;
@@ -128,23 +120,20 @@ class _NewChequePageState extends State<NewChequePage> {
   void _initializeExistingChequeData() {
     final existingCheque = widget.existingCheque!;
     
-    // Set cheque ID for edit mode
-    chequeId = existingCheque['chequeId'];
+    // Initialize cheque ID - handle both 'chequeId' and 'chqid' keys
+    chequeId = existingCheque['chequeId'] ?? existingCheque['chqid'];
     
-    // Set customer data
-    String customerName = existingCheque['customerName'] ?? '';
+    String customerName = existingCheque['customerName'] ?? existingCheque['cust_name'] ?? '';
     if (customerName.isNotEmpty) {
       _customerSearchController.text = customerName; 
       
-      // Check if customer exists in the loaded customers
       if (customerNames.contains(customerName)) {
         selectedCustomer = customerName;
         selectedCustId = customerIdMap[customerName];
       } else {
-        // If customer doesn't exist in dropdown, add it temporarily
         setState(() {
           customerNames.add(customerName);
-          String tempCustId = existingCheque['custId'] ?? '';
+          String tempCustId = existingCheque['custId'] ?? existingCheque['custid'] ?? '';
           if (tempCustId.isNotEmpty) {
             customerIdMap[customerName] = tempCustId;
             selectedCustId = tempCustId;
@@ -154,23 +143,21 @@ class _NewChequePageState extends State<NewChequePage> {
       }
     }
     
-    // Set cheque number
-    _chequeNoController.text = existingCheque['chequeNo'] ?? '';
+    _chequeNoController.text = existingCheque['chequeNo'] ?? existingCheque['chq_no'] ?? '';
     
-    // Set amount
-    _amountController.text = existingCheque['amount']?.toString() ?? '';
+    // Handle amount field
+    var amount = existingCheque['amount'] ?? existingCheque['chq_amt'];
+    _amountController.text = amount?.toString() ?? '';
     
-    // Set date - handle different date formats
-    String chequeDate = existingCheque['chequeDate'] ?? '';
+    // Handle date field
+    String chequeDate = existingCheque['chequeDate'] ?? existingCheque['chq_date'] ?? '';
     if (chequeDate.isNotEmpty) {
       try {
         DateTime parsedDate;
         if (chequeDate.contains('-')) {
-          // If already in dd-MM-yyyy format
           if (chequeDate.split('-')[0].length == 2) {
             _chequeDateController.text = chequeDate;
           } else {
-            // If in yyyy-MM-dd format
             parsedDate = DateTime.parse(chequeDate);
             _chequeDateController.text = DateFormat('dd-MM-yyyy').format(parsedDate);
           }
@@ -192,7 +179,7 @@ class _NewChequePageState extends State<NewChequePage> {
         customerIdMap = {
           for (var e in customers) e["cust_name"]!: e["custid"]!
         };
-        filteredCustomerNames = List.from(customerNames); // Initialize filtered list
+        filteredCustomerNames = List.from(customerNames);
       });
     } catch (e) {
       _showError('Failed to load customers: $e');
@@ -239,13 +226,26 @@ class _NewChequePageState extends State<NewChequePage> {
   }
 
   Future<Map<String, dynamic>> _saveChequeData() async {
+    // Validate form
     if (!_formKey.currentState!.validate()) {
-      return {"result": "0"};
+      return {"result": "0", "message": "Please fill all required fields"};
     }
 
+    // Validate customer selection
     if (selectedCustomer == null || selectedCustId == null) {
       _showError('Customer must be selected.');
-      return {"result": "0"};
+      return {"result": "0", "message": "Customer must be selected"};
+    }
+
+    // Validate required fields
+    if (_chequeNoController.text.trim().isEmpty) {
+      _showError('Cheque number is required.');
+      return {"result": "0", "message": "Cheque number is required"};
+    }
+
+    if (_amountController.text.trim().isEmpty) {
+      _showError('Amount is required.');
+      return {"result": "0", "message": "Amount is required"};
     }
 
     setState(() {
@@ -260,23 +260,23 @@ class _NewChequePageState extends State<NewChequePage> {
       
       if (url == null || unid == null || slex == null) {
         _showError('Missing credentials. Please login again.');
-        return {"result": "0"};
+        return {"result": "0", "message": "Missing credentials"};
       }
       
+      // Prepare request body according to your API structure
       Map<String, dynamic> requestBody = {
         "unid": unid,
         "slex": slex,
-        "custid": selectedCustId ?? '',
-        "cust_name": selectedCustomer ?? '',
+        "custid": selectedCustId!,
+        "cust_name": selectedCustomer!,
         "chq_no": _chequeNoController.text.trim(),
         "chq_date": _chequeDateController.text.trim(),
         "chq_amt": _amountController.text.trim(),
       };
 
-      // Add action and chequeId for edit mode
-      if (widget.isEditMode && chequeId != null) {
+      if (widget.isEditMode && chequeId != null && chequeId!.isNotEmpty) {
         requestBody["action"] = "update";
-        requestBody["chqid"] = chequeId;
+        requestBody["chqid"] = chequeId!;
       } else {
         requestBody["action"] = "insert";
       }
@@ -285,7 +285,10 @@ class _NewChequePageState extends State<NewChequePage> {
       
       final response = await http.post(
         Uri.parse('$url/action/cheques.php'),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
         body: jsonEncode(requestBody),
       );
 
@@ -293,37 +296,46 @@ class _NewChequePageState extends State<NewChequePage> {
       debugPrint('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        final result = json.decode(response.body);
-        if (result["result"] == "1") {
-          // Success message
-          String successMessage = widget.isEditMode 
-              ? "Cheque updated successfully!" 
-              : "Cheque saved successfully!";
+        try {
+          final result = json.decode(response.body);
           
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(successMessage),
-                backgroundColor: Colors.green,
-              ),
-            );
+          if (result["result"] == "1" || result["result"] == 1) {
+            String successMessage = widget.isEditMode 
+                ? (result["message"] ?? "Cheque updated successfully!")
+                : (result["message"] ?? "Cheque saved successfully!");
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(successMessage),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+            
+            Navigator.pop(context, result);
+            return result;
+          } else {
+            String errorMessage = result["message"] ?? "Failed to save cheque.";
+            _showError(errorMessage);
+            return {"result": "0", "message": errorMessage};
           }
-          
-          // Navigate back with result
-          Navigator.pop(context, result);
-          return result;
-        } else {
-          _showError(result["message"] ?? "Failed to save cheque.");
-          return {"result": "0", "message": result["message"] ?? "Failed to save cheque."};
+        } catch (jsonError) {
+          debugPrint('JSON parsing error: $jsonError');
+          _showError("Invalid response format from server.");
+          return {"result": "0", "message": "Invalid response format"};
         }
       } else {
-        _showError("Server error: ${response.statusCode}");
-        return {"result": "0", "message": "Server error: ${response.statusCode}"};
+        String errorMessage = "Server error: ${response.statusCode}";
+        _showError(errorMessage);
+        return {"result": "0", "message": errorMessage};
       }
     } catch (e) {
       debugPrint('Error saving cheque: $e');
-      _showError("Network error: $e");
-      return {"result": "0", "message": "Network error: $e"};
+      String errorMessage = "Network error: ${e.toString()}";
+      _showError(errorMessage);
+      return {"result": "0", "message": errorMessage};
     } finally {
       if (mounted) {
         setState(() {
@@ -344,6 +356,7 @@ class _NewChequePageState extends State<NewChequePage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
+        duration: Duration(seconds: 4),
       ),
     );
   }
@@ -352,8 +365,8 @@ class _NewChequePageState extends State<NewChequePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Customer Name', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 8),
+        const Text('Customer Name *', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -362,10 +375,10 @@ class _NewChequePageState extends State<NewChequePage> {
           ),
           child: widget.isViewMode
               ? Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                   child: Text(
                     selectedCustomer?.isNotEmpty == true ? selectedCustomer! : 'Not specified',
-                    style: const TextStyle(fontSize: 16),
+                    style: const TextStyle(fontSize: 13),
                   ),
                 )
               : Column(
@@ -373,14 +386,15 @@ class _NewChequePageState extends State<NewChequePage> {
                     TextField(
                       controller: _customerSearchController,
                       focusNode: _customerFocusNode,
+                      style: const TextStyle(fontSize: 13),
                       decoration: const InputDecoration(
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                         hintText: 'Type to search customer...',
-                        suffixIcon: Icon(Icons.search, color: Colors.grey),
+                        hintStyle: TextStyle(fontSize: 13),
+                        suffixIcon: Icon(Icons.search, color: Colors.grey, size: 18),
                       ),
                       onChanged: (value) {
-                        // Update selected customer if exact match
                         if (customerNames.contains(value)) {
                           setState(() {
                             selectedCustomer = value;
@@ -394,10 +408,9 @@ class _NewChequePageState extends State<NewChequePage> {
                         }
                       },
                     ),
-                    // NEW: Customer dropdown
                     if (_showCustomerDropdown && filteredCustomerNames.isNotEmpty)
                       Container(
-                        constraints: const BoxConstraints(maxHeight: 150),
+                        constraints: const BoxConstraints(maxHeight: 120),
                         decoration: BoxDecoration(
                           border: Border(
                             top: BorderSide(color: Colors.grey.shade300),
@@ -412,7 +425,7 @@ class _NewChequePageState extends State<NewChequePage> {
                             return InkWell(
                               onTap: () => _selectCustomer(customerName),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
@@ -424,12 +437,12 @@ class _NewChequePageState extends State<NewChequePage> {
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.person, color: Colors.grey, size: 16),
-                                    const SizedBox(width: 8),
+                                    const Icon(Icons.person, color: Colors.grey, size: 14),
+                                    const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
                                         customerName,
-                                        style: const TextStyle(fontSize: 14),
+                                        style: const TextStyle(fontSize: 12),
                                       ),
                                     ),
                                   ],
@@ -444,10 +457,10 @@ class _NewChequePageState extends State<NewChequePage> {
         ),
         if (selectedCustomer == null && !widget.isViewMode)
           const Padding(
-            padding: EdgeInsets.only(top: 8.0, left: 12.0),
+            padding: EdgeInsets.only(top: 6.0, left: 10.0),
             child: Text(
               'Please select a customer',
-              style: TextStyle(color: Colors.red, fontSize: 12),
+              style: TextStyle(color: Colors.red, fontSize: 10),
             ),
           ),
       ],
@@ -458,8 +471,8 @@ class _NewChequePageState extends State<NewChequePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Cheque Date', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 8),
+        const Text('Cheque Date *', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -470,13 +483,14 @@ class _NewChequePageState extends State<NewChequePage> {
             controller: _chequeDateController,
             readOnly: true,
             enabled: !widget.isViewMode,
+            style: const TextStyle(fontSize: 13),
             decoration: InputDecoration(
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               suffixIcon: widget.isViewMode 
                   ? null 
                   : IconButton(
-                      icon: const Icon(Icons.calendar_today),
+                      icon: const Icon(Icons.calendar_today, size: 18),
                       onPressed: () => _selectDate(context),
                     ),
             ),
@@ -491,21 +505,30 @@ class _NewChequePageState extends State<NewChequePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Cheque Number', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 8),
+        const Text('Cheque Number *', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: TextField(
+          child: TextFormField(
             controller: _chequeNoController,
             readOnly: widget.isViewMode,
+            style: const TextStyle(fontSize: 13),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              hintText: 'Enter cheque number',
+              hintStyle: TextStyle(fontSize: 13),
             ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Cheque number is required';
+              }
+              return null;
+            },
           ),
         ),
       ],
@@ -516,23 +539,34 @@ class _NewChequePageState extends State<NewChequePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Amount', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 8),
+        const Text('Amount *', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: TextField(
+          child: TextFormField(
             controller: _amountController,
             readOnly: widget.isViewMode,
+            style: const TextStyle(fontSize: 13),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               hintText: 'Enter amount',
+              hintStyle: TextStyle(fontSize: 13),
             ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Amount is required';
+              }
+              if (double.tryParse(value.trim()) == null) {
+                return 'Enter valid amount';
+              }
+              return null;
+            },
           ),
         ),
       ],
@@ -546,7 +580,7 @@ class _NewChequePageState extends State<NewChequePage> {
       children: [
         SizedBox(
           width: double.infinity,
-          height: 50,
+          height: 46,
           child: ElevatedButton(
             onPressed: isLoading ? null : _saveCheque,
             style: ElevatedButton.styleFrom(
@@ -555,16 +589,22 @@ class _NewChequePageState extends State<NewChequePage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             child: isLoading 
-                ? const CircularProgressIndicator(color: Colors.white)
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
                 : Text(
-                    widget.isEditMode ? 'Update Cheque' : 'Save Cheque', 
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+                    widget.isEditMode ? 'UPDATE' : 'SAVE', 
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
                   ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -579,13 +619,13 @@ class _NewChequePageState extends State<NewChequePage> {
             widget.isViewMode 
                 ? 'VIEW CHEQUE' 
                 : widget.isEditMode 
-                    ? 'EDIT CHEQUE' 
-                    : 'NEW CHEQUE',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                    ? 'Edit Cheque' 
+                    : 'New Cheque',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)
           ),
           centerTitle: true,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -593,9 +633,13 @@ class _NewChequePageState extends State<NewChequePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Loading cheque data...'),
+              SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(height: 12),
+              Text('Loading cheque data...', style: TextStyle(fontSize: 12)),
             ],
           ),
         ),
@@ -609,20 +653,20 @@ class _NewChequePageState extends State<NewChequePage> {
           widget.isViewMode 
               ? 'VIEW CHEQUE' 
               : widget.isEditMode 
-                  ? 'EDIT CHEQUE' 
-                  : 'NEW CHEQUE',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                  ? 'Edit Cheque' 
+                  : 'New Cheque',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Container(
         color: Colors.grey.shade100,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -630,13 +674,13 @@ class _NewChequePageState extends State<NewChequePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildCustomerField(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _buildDateField(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _buildChequeNumberField(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _buildAmountField(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 18),
                   _buildSaveButton(),
                 ],
               ),

@@ -244,7 +244,7 @@ class _DebitorsPageState extends State<DebitorsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DEBITORS'),
+        title: const Text('Debitors'),
         centerTitle: true,
       ),
       body: Container(
@@ -255,13 +255,13 @@ class _DebitorsPageState extends State<DebitorsPage> {
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(12.0),
                     color: AppTheme.primaryColor.withOpacity(0.1),
                     child: Center(
                       child: Text(
                         _mainTitle.isNotEmpty ? _mainTitle : 'Debitors Report from $_financialYear',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                         textAlign: TextAlign.center,
@@ -269,25 +269,25 @@ class _DebitorsPageState extends State<DebitorsPage> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(12.0),
                     child: Card(
                       elevation: 2.0,
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(12.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
                               'Total Amount',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             Text(
                               _totalAmount.isNotEmpty ? _totalAmount : "No Data",
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.green,
                               ),
@@ -298,15 +298,15 @@ class _DebitorsPageState extends State<DebitorsPage> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
                     child: Row(
                       children: [
-                        const Icon(Icons.people, color: Colors.grey),
-                        const SizedBox(width: 8),
+                        const Icon(Icons.people, color: Colors.grey, size: 18),
+                        const SizedBox(width: 6),
                         const Text(
                           'Debitors List',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -314,14 +314,14 @@ class _DebitorsPageState extends State<DebitorsPage> {
                         Text(
                           '${_debitors.length} Debitors',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 11,
                             color: Colors.grey.shade600,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Expanded(
                     child: _debitors.isEmpty
                         ? const Center(
@@ -330,14 +330,14 @@ class _DebitorsPageState extends State<DebitorsPage> {
                               children: [
                                 Icon(
                                   Icons.info_outline,
-                                  size: 48,
+                                  size: 40,
                                   color: Colors.grey,
                                 ),
-                                SizedBox(height: 16),
+                                SizedBox(height: 12),
                                 Text(
                                   'No debitors available.',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 13,
                                     color: Colors.grey,
                                   ),
                                 ),
@@ -345,7 +345,7 @@ class _DebitorsPageState extends State<DebitorsPage> {
                             ),
                           )
                         : ListView.separated(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(12),
                             itemCount: _debitors.length,
                             separatorBuilder: (context, index) => const Divider(),
                             itemBuilder: (context, index) {
@@ -400,15 +400,15 @@ class DebitorListItem extends StatelessWidget {
     return Card(
       elevation: 1.0,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(25),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Center(
                 child: Text(
@@ -416,14 +416,14 @@ class DebitorListItem extends StatelessWidget {
                       ? debitor.customer.customerName.substring(0, 1).toUpperCase()
                       : 'U',
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primaryColor,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,16 +431,16 @@ class DebitorListItem extends StatelessWidget {
                   Text(
                     capitalizeWords(debitor.customer.customerName),
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   if (debitor.customer.phone.isNotEmpty)
                     Text(
                       debitor.customer.phone,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 11,
                         color: Colors.grey.shade600,
                       ),
                     ),
@@ -452,26 +452,26 @@ class DebitorListItem extends StatelessWidget {
                 Text(
                   debitor.amount,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
                   ),
                 ),
                 if (debitor.phoneNo.isNotEmpty && onWhatsAppTap != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
+                    padding: const EdgeInsets.only(top: 6.0),
                     child: GestureDetector(
                       onTap: onWhatsAppTap,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
                           color: Colors.green,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(3),
                         ),
                         child: const Icon(
                           Icons.message,
                           color: Colors.white,
-                          size: 16,
+                          size: 14,
                         ),
                       ),
                     ),
@@ -484,4 +484,3 @@ class DebitorListItem extends StatelessWidget {
     );
   }
 }
-

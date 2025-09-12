@@ -11,6 +11,7 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'dart:io';
+import '../../theme/app_theme.dart';
 
 class AccountAgedReceivablePage extends StatefulWidget {
   final String? customerName;
@@ -64,7 +65,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     _fromDate = widget.fromDate ?? DateTime(DateTime.now().year, DateTime.now().month, 1);
     _toDate = widget.toDate ?? DateTime.now();
     
-    // Initialize controllers with formatted dates
+    
     _fromDateController.text = DateFormat('dd-MM-yyyy').format(_fromDate);
     _toDateController.text = DateFormat('dd-MM-yyyy').format(_toDate);
     
@@ -96,7 +97,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
         return;
       }
 
-      // Prepare the request body
+      //request body
       final requestBody = {
         "unid": unid,
         "slex": slex,
@@ -815,117 +816,133 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
           children: [
             // Date Selection Row
             Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'From Date',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                         
-                        ),
-                        child: TextField(
-                          controller: _fromDateController,
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
-                          ),
-                          readOnly: true,
-                          onTap: () => _selectDate(context, _fromDateController, true),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'To Date',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          
-                        ),
-                        child: TextField(
-                          controller: _toDateController,
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
-                          ),
-                          readOnly: true,
-                          onTap: () => _selectDate(context, _toDateController, false),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'From Date',
+            style: TextStyle(
+              fontSize: 10, 
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
             ),
+          ),
+          const SizedBox(height: 6), 
+          Container(
+            height: 36, 
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6), 
+            ),
+            child: TextField(
+              controller: _fromDateController,
+              style: const TextStyle(
+                fontSize: 11, 
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12, 
+                  vertical: 8,    
+                ),
+                suffixIcon: Icon(
+                  Icons.calendar_today, 
+                  color: Colors.grey,
+                  size: 16, 
+                ),
+                isDense: true, 
+              ),
+              readOnly: true,
+              onTap: () => _selectDate(context, _fromDateController, true),
+            ),
+          ),
+        ],
+      ),
+    ),
+    const SizedBox(width: 12), 
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'To Date',
+            style: TextStyle(
+              fontSize: 10, 
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6), 
+          Container(
+            height: 36, 
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6), 
+            ),
+            child: TextField(
+              controller: _toDateController,
+              style: const TextStyle(
+                fontSize: 11, 
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12, 
+                  vertical: 8,    
+                ),
+                suffixIcon: Icon(
+                  Icons.calendar_today, 
+                  color: Colors.grey,
+                  size: 16, 
+                ),
+                isDense: true,
+              ),
+              readOnly: true,
+              onTap: () => _selectDate(context, _toDateController, false),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ],
+),
 
             const SizedBox(height: 16),
 
             // Excel and Print buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _exportToExcel,
-                  icon: const Icon(Icons.file_download, size: 14),
-                  label: const Text('Excel'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[800],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    textStyle: const TextStyle(fontSize: 12),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _printReport,
-                  icon: const Icon(Icons.print, size: 14),
-                  label: const Text('Print'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    textStyle: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
             // Report Title  
             Center(
               child: Text(
@@ -933,7 +950,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                 'Aged Receivable Report From ${_fromDateController.text} To ${_toDateController.text}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
@@ -942,7 +959,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
 
             const SizedBox(height: 16),
 
-            // Loading indicator or aged receivable records
+            
             if (isLoading)
               Center(
                 child: Column(
@@ -954,7 +971,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                     const Text(
                       'Loading aged receivable data...',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 12,
                         color: Colors.grey,
                       ),
                     ),
@@ -973,24 +990,16 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                     const SizedBox(height: 16),
                     Text(
                       'No aged receivable records found for $_customerName\nin the selected date range.',
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '${_fromDateController.text} to ${_toDateController.text}',
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _fetchAgedReceivableData,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Refresh'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
+                    
                   ],
                 ),
               )
@@ -1002,7 +1011,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                   Text(
                     'Aged Receivable Records (${agedReceivableRecords.length})',
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
@@ -1035,7 +1044,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                               child: Text(
                                 'Invoice #${record.invoiceNumber}',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.orange.shade700,
                                 ),
@@ -1065,14 +1074,14 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                             const Text(
                               'Outstanding Amount:',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.black54,
                               ),
                             ),
                             Text(
                               '₹${record.outstandingAmount}',
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.orange,
                               ),
@@ -1086,7 +1095,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                             const Text(
                               'Days Outstanding:',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.black54,
                               ),
                             ),
@@ -1099,7 +1108,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                               child: Text(
                                 '${record.daysOutstanding} days',
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: _getAgeColor(record.daysOutstanding),
                                 ),
@@ -1112,7 +1121,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                           const Text(
                             'Description:',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: Colors.black87,
                             ),
@@ -1129,7 +1138,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                             child: Text(
                               record.description,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.black54,
                                 height: 1.4,
                               ),

@@ -99,15 +99,15 @@ class _NewOrderPageState extends State<NewOrderPage> {
     
     _customerOverlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        width: size.width * 0.9, // Same width as the customer field
+        width: size.width * 0.9,
         child: CompositedTransformFollower(
           link: _customerLayerLink,
           showWhenUnlinked: false,
-          offset: const Offset(0.0, 60.0), // Position below the customer field
+          offset: const Offset(0.0, 50.0), 
           child: Material(
             elevation: 4.0,
             child: Container(
-              constraints: const BoxConstraints(maxHeight: 200),
+              constraints: const BoxConstraints(maxHeight: 180),
               color: Colors.white,
               child: ListView.builder(
                 shrinkWrap: true,
@@ -118,7 +118,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
                   return InkWell(
                     onTap: () => _selectCustomer(customerName),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), // Reduced padding
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
@@ -130,12 +130,12 @@ class _NewOrderPageState extends State<NewOrderPage> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.person, color: Colors.grey, size: 16),
-                          const SizedBox(width: 8),
+                          const Icon(Icons.person, color: Colors.grey, size: 14), 
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               customerName,
-                              style: const TextStyle(fontSize: 14),
+                              style: const TextStyle(fontSize: 12), 
                             ),
                           ),
                         ],
@@ -535,7 +535,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Customer Name', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const Text('Customer Name', style: TextStyle(fontSize: 12, color: Colors.grey)), 
               const SizedBox(height: 4),
               CompositedTransformTarget(
                 link: _customerLayerLink,
@@ -547,10 +547,10 @@ class _NewOrderPageState extends State<NewOrderPage> {
                   ),
                   child: widget.isViewMode
                       ? Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12), 
                           child: Text(
                             selectedCustomer?.isNotEmpty == true ? selectedCustomer! : 'Not specified',
-                            style: const TextStyle(fontSize: 16),
+                            style: const TextStyle(fontSize: 13), 
                           ),
                         )
                       : TextField(
@@ -558,10 +558,12 @@ class _NewOrderPageState extends State<NewOrderPage> {
                           focusNode: _customerFocusNode,
                           decoration: const InputDecoration(
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12), 
                             hintText: 'Type to search customer...',
-                            suffixIcon: Icon(Icons.search, color: Colors.grey),
+                            hintStyle: TextStyle(fontSize: 12), 
+                            suffixIcon: Icon(Icons.search, color: Colors.grey, size: 18), 
                           ),
+                          style: const TextStyle(fontSize: 13), 
                           onChanged: (value) {
                             if (customerNames.contains(value)) {
                               setState(() {
@@ -583,13 +585,13 @@ class _NewOrderPageState extends State<NewOrderPage> {
             ],
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12), 
         // Date Field
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Order Date', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const Text('Order Date', style: TextStyle(fontSize: 12, color: Colors.grey)), 
               const SizedBox(height: 4),
               Container(
                 decoration: BoxDecoration(
@@ -601,10 +603,11 @@ class _NewOrderPageState extends State<NewOrderPage> {
                   controller: _dateController,
                   readOnly: true,
                   enabled: !widget.isViewMode,
+                  style: const TextStyle(fontSize: 13), 
                   decoration: const InputDecoration(
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                    suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12), 
+                    suffixIcon: Icon(Icons.calendar_today, color: Colors.grey, size: 18), 
                   ),
                   onTap: () => _selectDate(context),
                 ),
@@ -622,7 +625,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Search Products', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        const Text('Search Products', style: TextStyle(fontSize: 12, color: Colors.grey)), 
         const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(
@@ -632,11 +635,13 @@ class _NewOrderPageState extends State<NewOrderPage> {
           ),
           child: TextField(
             controller: _searchController,
+            style: const TextStyle(fontSize: 13), 
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12), 
               hintText: 'Search for products...',
-              prefixIcon: Icon(Icons.search, color: Colors.grey),
+              hintStyle: TextStyle(fontSize: 12), 
+              prefixIcon: Icon(Icons.search, color: Colors.grey, size: 18), 
             ),
           ),
         ),
@@ -648,10 +653,10 @@ class _NewOrderPageState extends State<NewOrderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Products', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        const Text('Products', style: TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 4),
         Container(
-          height: 250, 
+          height: 220, 
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: Colors.grey.shade300),
@@ -661,11 +666,11 @@ class _NewOrderPageState extends State<NewOrderPage> {
               ? const Center(
                   child: Text(
                     'No products found',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                    style: TextStyle(color: Colors.grey, fontSize: 13), 
                   ),
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6), 
                   itemCount: filteredProductNames.length,
                   separatorBuilder: (context, index) => const Divider(height: 1),
                   itemBuilder: (context, index) {
@@ -674,7 +679,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
                     bool isSelected = quantity > 0;
                     
                     return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 3), 
                       decoration: BoxDecoration(
                         color: isSelected ? AppTheme.primaryColor.withOpacity(0.05) : null,
                         borderRadius: BorderRadius.circular(4),
@@ -687,20 +692,20 @@ class _NewOrderPageState extends State<NewOrderPage> {
                         children: [
                           if (isSelected) ...[
                             Container(
-                              width: 4,
-                              height: 32,
+                              width: 3,
+                              height: 28, 
                               decoration: BoxDecoration(
                                 color: AppTheme.primaryColor,
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6), 
                           ],
                           Expanded(
                             child: Text(
                               productName,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 13, 
                                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                 color: isSelected ? AppTheme.primaryColor : Colors.black,
                               ),
@@ -710,23 +715,23 @@ class _NewOrderPageState extends State<NewOrderPage> {
                             GestureDetector(
                               onTap: () => _incrementQuantity(productName),
                               child: Container(
-                                width: 32,
-                                height: 32,
+                                width: 28, 
+                                height: 28,
                                 decoration: BoxDecoration(
                                   color: AppTheme.primaryColor,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: const Icon(
                                   Icons.add,
                                   color: Colors.white,
-                                  size: 20,
+                                  size: 16, 
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Container(
-                              width: 50,
-                              height: 32,
+                              width: 42, 
+                              height: 28,
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.grey.shade300),
                                 borderRadius: BorderRadius.circular(4),
@@ -736,42 +741,43 @@ class _NewOrderPageState extends State<NewOrderPage> {
                                 child: Text(
                                   quantity.toString(),
                                   style: TextStyle(
-                                    fontSize: 16, 
+                                    fontSize: 13, 
                                     fontWeight: FontWeight.bold,
                                     color: isSelected ? AppTheme.primaryColor : Colors.black,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6), 
                             GestureDetector(
                               onTap: quantity > 0 ? () => _decrementQuantity(productName) : null,
                               child: Container(
-                                width: 32,
-                                height: 32,
+                                width: 28, 
+                                height: 28,
                                 decoration: BoxDecoration(
                                   color: quantity > 0 ? Colors.red : Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                                 child: Icon(
                                   Icons.remove,
                                   color: quantity > 0 ? Colors.white : Colors.grey,
-                                  size: 20,
+                                  size: 16, 
                                 ),
                               ),
                             ),
                           ] else if (quantity > 0) ...[
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), 
                               decoration: BoxDecoration(
                                 color: AppTheme.primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 'Qty: $quantity',
                                 style: const TextStyle(
                                   color: AppTheme.primaryColor,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 11, 
                                 ),
                               ),
                             ),
@@ -790,7 +796,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Notes', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        const Text('Notes', style: TextStyle(fontSize: 12, color: Colors.grey)), 
         const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(
@@ -803,11 +809,12 @@ class _NewOrderPageState extends State<NewOrderPage> {
             maxLines: 2, 
             minLines: 2,
             readOnly: widget.isViewMode,
+            style: const TextStyle(fontSize: 13), 
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.all(12),
+              contentPadding: EdgeInsets.all(10), 
               hintText: 'Enter any additional notes...',
-              hintStyle: TextStyle(color: Colors.grey),
+              hintStyle: TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ),
         ),
@@ -820,7 +827,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
     
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 45, 
       child: ElevatedButton(
         onPressed: isLoading ? null : _saveOrder,
         style: ElevatedButton.styleFrom(
@@ -831,10 +838,10 @@ class _NewOrderPageState extends State<NewOrderPage> {
           ),
         ),
         child: isLoading 
-            ? const CircularProgressIndicator(color: Colors.white)
+            ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
             : Text(
-                widget.isEditMode ? 'Update Order' : 'Save Order', 
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+                widget.isEditMode ? 'UPDATE' : 'SAVE', 
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)
               ),
       ),
     );
@@ -851,12 +858,12 @@ class _NewOrderPageState extends State<NewOrderPage> {
                 ? 'VIEW ORDER' 
                 : widget.isEditMode 
                     ? 'EDIT ORDER' 
-                    : 'NEW ORDER',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                    : 'New Order',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18) 
           ),
           centerTitle: true,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20), 
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -865,14 +872,13 @@ class _NewOrderPageState extends State<NewOrderPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Loading order data...'),
+              SizedBox(height: 12), 
+              Text('Loading order data...', style: TextStyle(fontSize: 13)), 
             ],
           ),
         ),
       );
     }
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
@@ -881,8 +887,8 @@ class _NewOrderPageState extends State<NewOrderPage> {
               ? 'VIEW ORDER' 
               : widget.isEditMode 
                   ? 'EDIT ORDER' 
-                  : 'NEW ORDER',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+                  : 'New Order',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)
         ),
         centerTitle: true,
         leading: IconButton(

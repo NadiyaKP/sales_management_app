@@ -12,9 +12,12 @@ class ApiServices {
       String? url = prefs.getString('url');
       String? unid = prefs.getString('unid');
       String? slex = prefs.getString('slex');
+
       if (url == null || unid == null || slex == null) {
+        print("⚠️ Missing URL, unid, or slex in SharedPreferences");
         return null;
       }
+
       final response = await http.post(
         Uri.parse('$url/$endpoint'),
         headers: {
@@ -25,17 +28,21 @@ class ApiServices {
           "slex": slex,
         }),
       );
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['result'] == '1') {
           return data;
         } else {
+          print("❌ API returned result != 1 → ${data['result']}");
           return null;
         }
       } else {
+        print("❌ API Error: ${response.statusCode}");
         return null;
       }
     } catch (e) {
+      print("⚠️ Exception in fetchData: $e");
       return null;
     }
   }
@@ -46,10 +53,10 @@ class ApiServices {
     if (data == null || !data.containsKey('customerdet')) return [];
     return (data['customerdet'] as List<dynamic>)
         .map((e) => {
-      "cust_name": e['cust_name'].toString(),  // Explicitly convert to String
-      "custid": e['custid'].toString(),
-      "outstand_amt": e['outstand_amt'].toString(),
-    })
+              "cust_name": e['cust_name'].toString(),
+              "custid": e['custid'].toString(),
+              "outstand_amt": e['outstand_amt'].toString(),
+            })
         .toList();
   }
 
@@ -59,9 +66,9 @@ class ApiServices {
     if (data == null || !data.containsKey('walletdet')) return [];
     return (data['walletdet'] as List<dynamic>)
         .map((e) => {
-      "wlt_name": e['wlt_name'].toString(),
-      "wltid": e['wltid'].toString(),
-    })
+              "wlt_name": e['wlt_name'].toString(),
+              "wltid": e['wltid'].toString(),
+            })
         .toList();
   }
 
@@ -71,9 +78,9 @@ class ApiServices {
     if (data == null || !data.containsKey('customertypesdet')) return [];
     return (data['customertypesdet'] as List<dynamic>)
         .map((e) => {
-      "custtype_name": e['custtype_name'].toString(),
-      "custtypeid": e['custtypeid'].toString(),
-    })
+              "custtype_name": e['custtype_name'].toString(),
+              "custtypeid": e['custtypeid'].toString(),
+            })
         .toList();
   }
 
@@ -83,11 +90,12 @@ class ApiServices {
     if (data == null || !data.containsKey('routedet')) return [];
     return (data['routedet'] as List<dynamic>)
         .map((e) => {
-      "route_name": e['route_name'].toString(),
-      "rtid": e['rtid'].toString(),
-    })
+              "route_name": e['route_name'].toString(),
+              "rtid": e['rtid'].toString(),
+            })
         .toList();
   }
+
   /// Fetch Company Details
   Future<Map<String, dynamic>?> fetchCompanyDetails() async {
     final data = await fetchData('company_full_details.php');
@@ -98,8 +106,23 @@ class ApiServices {
   /// Fetch Permission Details
   Future<PermissionResponse?> fetchPermissionDetails() async {
     final data = await fetchData('sales-executive-permission.php');
-    if (data == null) return null;
-    return PermissionResponse.fromJson(data);
+    if (data == null) {
+      print("⚠️ No permission data found");
+      return null;
+    }
+
+    final permissionResponse = PermissionResponse.fromJson(data);
+
+    // 🔹 Print details in console
+    for (var p in permissionResponse.permissionDetails) {
+      print("📌 Permission → "
+          "InvoiceView: ${p.invoiceView}, "
+         
+          "CustomerView: ${p.customerView}, "
+          "CustomerAdd: ${p.customerAdd}");
+    }
+
+    return permissionResponse;
   }
 
   /// Fetch product Details
@@ -108,17 +131,9 @@ class ApiServices {
     if (data == null || !data.containsKey('productdet')) return [];
     return (data['productdet'] as List<dynamic>)
         .map((e) => {
-      "prd_name": e['prd_name'].toString(),
-      "prd_id": e['prd_id'].toString(),
-    })
+              "prd_name": e['prd_name'].toString(),
+              "prd_id": e['prd_id'].toString(),
+            })
         .toList();
   }
-
 }
-
-
-
-
-
-
-

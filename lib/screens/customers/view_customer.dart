@@ -16,14 +16,12 @@ class ViewCustomer extends StatelessWidget {
         backgroundColor: AppTheme.primaryColor,
         centerTitle: true,
         actions: [
-          // Call button - only show if phone number exists
           if (customer.phoneNo.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.phone),
               onPressed: () => _makePhoneCall(customer.phoneNo),
               tooltip: 'Call Customer',
             ),
-          // Email button - only show if email exists
           if (customer.email.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.email),
@@ -45,7 +43,6 @@ class ViewCustomer extends StatelessWidget {
     );
   }
 
-  // Function to make phone call
   Future<void> _makePhoneCall(String phoneNumber) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     try {
@@ -56,11 +53,9 @@ class ViewCustomer extends StatelessWidget {
       }
     } catch (e) {
       print('Error launching phone dialer: $e');
-      
     }
   }
 
-  // Function to send email
   Future<void> _sendEmail(String email) async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
@@ -75,11 +70,9 @@ class ViewCustomer extends StatelessWidget {
       }
     } catch (e) {
       print('Error launching email client: $e');
-     
     }
   }
 
-  // Helper function to capitalize first letter of each word
   String _capitalizeAddress(String address) {
     if (address.isEmpty) return address;
     
@@ -137,7 +130,7 @@ class ViewCustomer extends StatelessWidget {
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 18,
+          fontSize: 14,
           fontWeight: FontWeight.bold,
           color: AppTheme.primaryColor,
         ),
@@ -156,6 +149,7 @@ class ViewCustomer extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: Colors.grey,
               ),
@@ -174,6 +168,7 @@ class ViewCustomer extends StatelessWidget {
                     child: Text(
                       value,
                       style: TextStyle(
+                        fontSize: 12,
                         color: isActive ? Colors.green[800] : Colors.red[800],
                         fontWeight: FontWeight.bold,
                       ),
@@ -182,6 +177,7 @@ class ViewCustomer extends StatelessWidget {
                 : Text(
                     value,
                     style: const TextStyle(
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

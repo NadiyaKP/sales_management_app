@@ -330,7 +330,7 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
     if (isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('ORDER DETAILS'),
+          title: const Text('Order Details'),
           backgroundColor: AppTheme.primaryColor,
           centerTitle: true,
         ),
@@ -341,7 +341,7 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
     if (orderData == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('ORDER DETAILS'),
+          title: const Text('Order Details'),
           backgroundColor: AppTheme.primaryColor,
           centerTitle: true,
         ),
@@ -353,10 +353,10 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
               SizedBox(height: 16),
               Text(
                 'Failed to load order details',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 8),
-              Text('Please try again later.'),
+              Text('Please try again later.', style: TextStyle(fontSize: 14)),
             ],
           ),
         ),
@@ -368,7 +368,7 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ORDER DETAILS'),
+        title: const Text('Order Details'),
         backgroundColor: AppTheme.primaryColor,
         centerTitle: true,
         actions: [
@@ -395,30 +395,30 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 3,
-              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 2,
+              margin: const EdgeInsets.only(bottom: 12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'Order Information',
                       style:  TextStyle(
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryColor,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     _buildInfoRow('Order No', orderData!['ord_no'] ?? 'N/A'),
                     _buildInfoRow('Order Date', orderData!['ord_date'] ?? 'N/A'),
                     _buildInfoRow('Sales Executive', orderData!['salesexe_name'] ?? 'N/A'),
@@ -429,24 +429,24 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
 
             Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 3,
-              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 2,
+              margin: const EdgeInsets.only(bottom: 12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'Customer Details',
                       style:  TextStyle(
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryColor,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     _buildInfoRow('Name', customerDetails['custname'] ?? 'N/A'),
                     if (customerDetails['phone'] != null && customerDetails['phone'].toString().isNotEmpty)
                       _buildInfoRow('Phone', customerDetails['phone'].toString()),
@@ -462,24 +462,24 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
 
             Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 3,
-              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 2,
+              margin: const EdgeInsets.only(bottom: 12),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'Order Items',
                       style:  TextStyle(
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryColor,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Table(
                       border: TableBorder.all(
                         color: Colors.grey.shade300,
@@ -496,23 +496,23 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
                           ),
                           children: const [
                             Padding(
-                              padding: EdgeInsets.all(12.0),
+                              padding: EdgeInsets.all(8.0),
                               child: Text(
                                 "Item Name",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 12,
                                 ),
                                 textAlign: TextAlign.left,
                               ),
                             ),
                             Padding(
-                              padding: EdgeInsets.all(12.0),
+                              padding: EdgeInsets.all(8.0),
                               child: Text(
                                 "Qty",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 12,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -523,18 +523,18 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
                           return TableRow(
                             children: [
                               Padding(
-                                padding: const EdgeInsets.all(12.0),
+                                padding: const EdgeInsets.all(8.0),
                                 child: Text(
                                   item['prd_name'] ?? 'N/A',
-                                  style: const TextStyle(fontSize: 13),
+                                  style: const TextStyle(fontSize: 11),
                                   textAlign: TextAlign.left,
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.all(12.0),
+                                padding: const EdgeInsets.all(8.0),
                                 child: Text(
                                   item['qty']?.toString() ?? '0',
-                                  style: const TextStyle(fontSize: 13),
+                                  style: const TextStyle(fontSize: 11),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -551,24 +551,24 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
             if (companyDatas != null) ...[
               Card(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                elevation: 3,
-                margin: const EdgeInsets.only(bottom: 16),
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 12),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'Company Information',
                         style:  TextStyle(
-                          fontSize: 18,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primaryColor,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       if (companyDatas!.containsKey('companydet') && 
                           companyDatas!['companydet'] is List && 
                           companyDatas!['companydet'].isNotEmpty) ...[
@@ -576,7 +576,7 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
                       ] else if (companyDatas!.containsKey('com_name')) ...[
                         _buildInfoRow('Company Name', companyDatas!['com_name'] ?? 'N/A'),
                       ] else ...[
-                        const Text('Company details loaded successfully'),
+                        const Text('Company details loaded successfully', style: TextStyle(fontSize: 12)),
                       ],
                     ],
                   ),
@@ -591,17 +591,17 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: 100,
             child: Text(
               '$label:',
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
+                fontSize: 12,
               ),
             ),
           ),
@@ -609,7 +609,7 @@ class _ViewOrderPageState extends State<ViewOrderPage> {
             child: Text(
               value,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 color: Colors.black87,
               ),
             ),

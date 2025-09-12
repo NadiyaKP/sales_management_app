@@ -31,12 +31,19 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
   Map<String, dynamic>? companyData;
 
   bool isLoading = true;
+  bool companyDataLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    fetchReceiptDetails();
-    loadCompanyDetails();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    await Future.wait([
+      fetchReceiptDetails(),
+      loadCompanyDetails(),
+    ]);
   }
 
   Future<void> fetchReceiptDetails() async {
@@ -48,6 +55,9 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
 
       if (url == null || unid == null || slex == null) {
         _showError('Missing credentials');
+        setState(() {
+          isLoading = false;
+        });
         return;
       }
 
@@ -61,47 +71,118 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
           "slex": slex,
           "rcpid": widget.rcpId,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['result'] == "1") {
           setState(() {
             receiptsData = data;
-            isLoading = false;
           });
         } else {
           _showError(data['message'] ?? 'Failed to fetch receipt details.');
-          setState(() {
-            isLoading = false;
-          });
         }
       } else {
         _showError('Error: ${response.statusCode}');
-        setState(() {
-          isLoading = false;
-        });
       }
     } catch (e) {
       _showError('An error occurred: $e');
-      setState(() {
-        isLoading = false;
-      });
+    } finally {
+      _checkLoadingComplete();
     }
   }
 
   Future<void> loadCompanyDetails() async {
     try {
+      // First try to get from API service
       final companyDetails = await apiServices.fetchCompanyDetails();
-      if (companyDetails != null) {
+      if (companyDetails != null && companyDetails.isNotEmpty) {
         setState(() {
           companyData = companyDetails;
+          companyDataLoaded = true;
         });
+        return;
+      }
+
+      // If API service fails, try direct API call as fallback
+      await _loadCompanyDetailsDirectly();
+    } catch (e) {
+      print("Error from API service: $e");
+      // Try direct API call as fallback
+      await _loadCompanyDetailsDirectly();
+    } finally {
+      _checkLoadingComplete();
+    }
+  }
+
+  Future<void> _loadCompanyDetailsDirectly() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? url = prefs.getString('url');
+      String? unid = prefs.getString('unid');
+      String? slex = prefs.getString('slex');
+
+      if (url == null || unid == null || slex == null) {
+        _setDefaultCompanyData();
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse("$url/company-details.php"), // Adjust endpoint as needed
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "unid": unid,
+          "slex": slex,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['result'] == "1" && data['companydet'] != null) {
+          setState(() {
+            companyData = data;
+            companyDataLoaded = true;
+          });
+        } else {
+          _setDefaultCompanyData();
+        }
       } else {
-        _showError("No company data found.");
+        _setDefaultCompanyData();
       }
     } catch (e) {
-      _showError("Error loading company details: $e");
+      print("Direct API call failed: $e");
+      _setDefaultCompanyData();
+    }
+  }
+
+  void _setDefaultCompanyData() {
+    // Set default company data as fallback
+    setState(() {
+      companyData = {
+        'companydet': [
+          {
+            'com_name': 'Your Company Name', // You can customize this
+            'com_address': '',
+            'com_phone': '',
+            'com_email': '',
+          }
+        ]
+      };
+      companyDataLoaded = true;
+    });
+  }
+
+  void _checkLoadingComplete() {
+    if (receiptsData != null && companyDataLoaded) {
+      setState(() {
+        isLoading = false;
+      });
+    } else if (!isLoading) {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -110,6 +191,7 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
       backgroundColor: Colors.red,
+      duration: const Duration(seconds: 4),
     ));
   }
 
@@ -118,18 +200,19 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
       backgroundColor: Colors.green,
+      duration: const Duration(seconds: 3),
     ));
   }
 
   pw.Document generateReceiptPdf() {
     final pdf = pw.Document();
     
-    if (companyData == null || receiptsData == null) {
+    if (receiptsData == null) {
       return pdf;
     }
 
-    final companyDetails = companyData!['companydet'][0];
-    final customerDetails = receiptsData!['customerdet'][0];
+    final companyDetails = companyData?['companydet']?[0] ?? {'com_name': 'Your Company'};
+    final customerDetails = receiptsData!['customerdet']?[0] ?? {};
 
     pdf.addPage(
       pw.Page(
@@ -172,14 +255,14 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                           ),
                         ),
                         pw.Text(
-                          customerDetails['custname'] ?? '',
+                          customerDetails['custname'] ?? 'N/A',
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                         ),
-                        if (customerDetails['address'] != null && customerDetails['address'].isNotEmpty)
+                        if (customerDetails['address'] != null && customerDetails['address'].toString().isNotEmpty)
                           pw.Text(customerDetails['address']),
-                        if (customerDetails['phone'] != null && customerDetails['phone'].isNotEmpty)
+                        if (customerDetails['phone'] != null && customerDetails['phone'].toString().isNotEmpty)
                           pw.Text("Ph: ${customerDetails['phone']}"),
-                        if (customerDetails['gst_no'] != null && customerDetails['gst_no'].isNotEmpty)
+                        if (customerDetails['gst_no'] != null && customerDetails['gst_no'].toString().isNotEmpty)
                           pw.Text("GST: ${customerDetails['gst_no']}"),
                         if (customerDetails['state'] != null && customerDetails['state_code'] != null)
                           pw.Text("State: ${customerDetails['state']} (${customerDetails['state_code']})"),
@@ -199,7 +282,7 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                               "Date: ",
                               style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                             ),
-                            pw.Text(receiptsData!['rcp_date'] ?? ''),
+                            pw.Text(receiptsData!['rcp_date'] ?? 'N/A'),
                           ],
                         ),
                         pw.Row(
@@ -208,7 +291,7 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                               "Receipt No: ",
                               style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                             ),
-                            pw.Text(receiptsData!['rcp_no'] ?? ''),
+                            pw.Text(receiptsData!['rcp_no'] ?? 'N/A'),
                           ],
                         ),
                       ],
@@ -236,7 +319,7 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                           ),
                         ),
                         pw.Text(
-                          receiptsData!['rcp_words'] ?? '',
+                          receiptsData!['rcp_words'] ?? 'N/A',
                           style: const pw.TextStyle(fontSize: 14),
                           maxLines: 3,
                         ),
@@ -257,7 +340,7 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                           ),
                         ),
                         pw.Text(
-                          receiptsData!['rcp_amt'] ?? '',
+                          receiptsData!['rcp_amt'] ?? '0.00',
                           style: const pw.TextStyle(fontSize: 14),
                         ),
                       ],
@@ -277,7 +360,7 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                       pw.Text("Authorised Signature"),
                       pw.SizedBox(height: 20),
                       pw.Text(
-                        companyDetails['com_name'] ?? '',
+                        companyDetails['com_name'] ?? 'Company Name',
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                       ),
                     ],
@@ -295,19 +378,24 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
   }
 
   Future<void> _printReceipt() async {
-    if (companyData != null) {
-      final pdf = generateReceiptPdf();
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
-      );
+    if (receiptsData != null) {
+      try {
+        final pdf = generateReceiptPdf();
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdf.save(),
+        );
+        _showSuccess('Receipt sent to printer successfully!');
+      } catch (e) {
+        _showError('Error printing receipt: $e');
+      }
     } else {
-      _showError('Company details not loaded. Cannot generate PDF.');
+      _showError('Receipt data not loaded. Cannot generate PDF.');
     }
   }
 
   Future<void> _shareReceipt() async {
     try {
-      if (companyData == null || receiptsData == null) {
+      if (receiptsData == null) {
         _showError('Receipt data not loaded. Cannot share PDF.');
         return;
       }
@@ -343,25 +431,55 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
     if (isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('RECEIPT VIEW'),
+          title: const Text('Receipt View'),
           centerTitle: true,
           backgroundColor: AppTheme.primaryColor,
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading receipt details...'),
+            ],
+          ),
+        ),
       );
     }
 
     if (receiptsData == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('RECEIPT VIEW'),
+          title: const Text('Receipt View'),
           centerTitle: true,
           backgroundColor: AppTheme.primaryColor,
         ),
-        body: const Center(
-          child: Text(
-            'Receipt data not found',
-            style: TextStyle(fontSize: 16, color: Colors.red),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Receipt data not found',
+                style: TextStyle(fontSize: 16, color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    isLoading = true;
+                  });
+                  _initializeData();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         ),
       );
@@ -371,7 +489,7 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('RECEIPT VIEW'),
+        title: const Text('Receipt View'),
         centerTitle: true,
         backgroundColor: AppTheme.primaryColor,
         actions: [
@@ -391,31 +509,54 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Show company data status
+            if (!companyDataLoaded)
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Company details could not be loaded. Using default settings.',
+                        style: TextStyle(color: Colors.orange),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            
             // Receipt Header Card
             Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
               elevation: 3,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
                     const Text(
                       'RECEIPT',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF022E44),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     const Divider(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     
                     // Use responsive layout based on screen width
                     LayoutBuilder(
@@ -427,22 +568,22 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                             children: [
                               // Customer Details Section
                               _buildCustomerDetailsSection(customerDetails),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               const Divider(),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               // Receipt Details Section
                               _buildReceiptDetailsSection(),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               const Divider(),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               // Amount Details Section
                               _buildAmountDetailsSection(),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               const Divider(),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               // Signatures Section
                               _buildSignaturesSection(),
-                              const SizedBox(height: 40),
+                              const SizedBox(height: 30),
                               // Company Name
                               _buildCompanyNameSection(),
                             ],
@@ -460,9 +601,9 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                                     flex: 2,
                                     child: _buildCustomerDetailsSection(customerDetails),
                                   ),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 12),
                                   const VerticalDivider(),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 12),
                                   // Receipt Details
                                   Expanded(
                                     flex: 2,
@@ -470,17 +611,17 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               const Divider(),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               // Amount Details
                               _buildAmountDetailsSection(),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               const Divider(),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               // Signatures
                               _buildSignaturesSection(),
-                              const SizedBox(height: 40),
+                              const SizedBox(height: 30),
                               // Company Name
                               _buildCompanyNameSection(),
                             ],
@@ -506,46 +647,46 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
           'Received From',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 13,
             color: Color(0xFF022E44),
           ),
           overflow: TextOverflow.visible,
           softWrap: false,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
-          capitalizeWords(customerDetails['custname'] ?? ''),
+          capitalizeWords(customerDetails['custname']?.toString() ?? 'N/A'),
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 14,
+            fontSize: 12,
           ),
         ),
-        if (customerDetails['phone'] != null && customerDetails['phone'].isNotEmpty) ...[
-          const SizedBox(height: 4),
+        if (customerDetails['phone'] != null && customerDetails['phone'].toString().isNotEmpty) ...[
+          const SizedBox(height: 3),
           Text(
             'Ph: ${customerDetails['phone']}',
-            style: const TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 10),
           ),
         ],
-        if (customerDetails['address'] != null && customerDetails['address'].isNotEmpty) ...[
-          const SizedBox(height: 4),
+        if (customerDetails['address'] != null && customerDetails['address'].toString().isNotEmpty) ...[
+          const SizedBox(height: 3),
           Text(
-            capitalizeWords(customerDetails['address']),
-            style: const TextStyle(fontSize: 12),
+            capitalizeWords(customerDetails['address'].toString()),
+            style: const TextStyle(fontSize: 10),
           ),
         ],
-        if (customerDetails['gst_no'] != null && customerDetails['gst_no'].isNotEmpty) ...[
-          const SizedBox(height: 4),
+        if (customerDetails['gst_no'] != null && customerDetails['gst_no'].toString().isNotEmpty) ...[
+          const SizedBox(height: 3),
           Text(
             'GST No: ${customerDetails['gst_no']}',
-            style: const TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 10),
           ),
         ],
         if (customerDetails['state'] != null && customerDetails['state_code'] != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             'State: ${customerDetails['state']} (${customerDetails['state_code']})',
-            style: const TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 10),
           ),
         ],
       ],
@@ -556,9 +697,9 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildReceiptDetailRow('Date:', receiptsData!['rcp_date'] ?? ''),
-        const SizedBox(height: 8),
-        _buildReceiptDetailRow('Receipt No:', receiptsData!['rcp_no'] ?? ''),
+        _buildReceiptDetailRow('Date:', receiptsData!['rcp_date']?.toString() ?? 'N/A'),
+        const SizedBox(height: 6),
+        _buildReceiptDetailRow('Receipt No:', receiptsData!['rcp_no']?.toString() ?? 'N/A'),
       ],
     );
   }
@@ -578,20 +719,20 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                   const Text(
                     'Amount In Words:',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
-                    receiptsData!['rcp_words'] ?? '',
-                    style: const TextStyle(fontSize: 14),
+                    receiptsData!['rcp_words']?.toString() ?? 'N/A',
+                    style: const TextStyle(fontSize: 11),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               // Amount
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -603,14 +744,14 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                         'Amount:',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 13,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
-                        receiptsData!['rcp_amt'] ?? '',
+                        receiptsData!['rcp_amt']?.toString() ?? '0.00',
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: Colors.green,
                         ),
@@ -635,21 +776,21 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                     const Text(
                       'Amount In Words:',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
-                      receiptsData!['rcp_words'] ?? '',
-                      style: const TextStyle(fontSize: 14),
+                      receiptsData!['rcp_words']?.toString() ?? 'N/A',
+                      style: const TextStyle(fontSize: 11),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               // Amount
               Expanded(
                 flex: 2,
@@ -660,14 +801,14 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
                       'Amount:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 13,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
-                      receiptsData!['rcp_amt'] ?? '',
+                      receiptsData!['rcp_amt']?.toString() ?? '0.00',
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: Colors.green,
                       ),
@@ -688,36 +829,41 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
       children: [
         Text(
           'Authorised Signature',
-          style: TextStyle(fontSize: 12),
+          style: TextStyle(fontSize: 10),
         ),
         Text(
           'Approved',
-          style: TextStyle(fontSize: 12),
+          style: TextStyle(fontSize: 10),
         ),
         Text(
           'Signature',
-          style: TextStyle(fontSize: 12),
+          style: TextStyle(fontSize: 10),
         ),
       ],
     );
   }
 
   Widget _buildCompanyNameSection() {
-    if (companyData != null && companyData!['companydet'] != null) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text(
-            companyData!['companydet'][0]['com_name'] ?? '',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      );
+    String companyName = 'Your Company Name'; // Default fallback
+    
+    if (companyData != null && 
+        companyData!['companydet'] != null && 
+        companyData!['companydet'].isNotEmpty) {
+      companyName = companyData!['companydet'][0]['com_name']?.toString() ?? companyName;
     }
-    return const SizedBox.shrink();
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        Text(
+          companyName,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildReceiptDetailRow(String label, String value) {
@@ -728,14 +874,14 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
           label,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 12,
+            fontSize: 10,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 10),
           ),
         ),
       ],
@@ -745,6 +891,7 @@ class _ReceiptViewPageState extends State<ReceiptViewPage> {
 
 // Helper function
 String capitalizeWords(String text) {
+  if (text.isEmpty) return text;
   return text.split(' ').map((word) {
     return word.isNotEmpty
         ? word[0].toUpperCase() + word.substring(1).toLowerCase()

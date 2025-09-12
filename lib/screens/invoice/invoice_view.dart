@@ -46,79 +46,162 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
       String? slex = prefs.getString('slex');
       String invId = widget.invId;
       
+      print("=" * 60);
+      print("📤 INVOICE API REQUEST");
+      print("=" * 60);
+      print("🌐 URL: $url/single-invoice-view.php");
+      print("🆔 Invoice ID: $invId");
+      print("👤 User ID: $unid");
+      print("🔑 Session: $slex");
+      
+      final requestBody = {
+        "unid": unid,
+        "slex": slex,
+        "invid": invId,
+      };
+      
+      print("📦 Request Body: ${jsonEncode(requestBody)}");
+      print("-" * 60);
+
       final response = await http.post(
         Uri.parse("$url/single-invoice-view.php"),
         headers: {
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          "unid": unid,
-          "slex": slex,
-          "invid": invId,
-        }),
+        body: jsonEncode(requestBody),
       );
       
+      print("📥 INVOICE API RESPONSE");
+      print("=" * 60);
+      print("📊 Status Code: ${response.statusCode}");
+      print("📦 Response Body: ${response.body}");
+      print("-" * 60);
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['result'] == "1") {
+        print("🔍 Parsed Data Result: ${data['result']}");
+        print("📝 Message: ${data['message'] ?? 'No message'}");
+        
+        if (data.containsKey('customerdet')) {
+          print("👤 Customer Data: ${data['customerdet']}");
+        }
+        if (data.containsKey('invoicecartdet')) {
+          print("🛒 Cart Items Count: ${(data['invoicecartdet'] as List).length}");
+        }
+        if (data.containsKey('invoicegst')) {
+          print("💰 GST Details: ${data['invoicegst']}");
+        }
+        print("-" * 60);
+        
+        // FIX: Check if result is "1" or 1 (string or int)
+        if (data['result'] == "1" || data['result'] == 1) {
           setState(() {
             invoiceData = data;
             isLoading = false;
           });
+          print("✅ Invoice data loaded successfully");
+          print("=" * 60);
         } else {
-          showError(data['message'] ?? 'Failed to fetch invoice details.');
+          String errorMsg = data['message'] ?? 'Failed to fetch invoice details.';
+          print("❌ API returned result != 1 → ${data['result']}");
+          print("❌ Error message: $errorMsg");
+          print("=" * 60);
+          showError(errorMsg);
+          setState(() {
+            isLoading = false;
+          });
         }
       } else {
-        showError('Error: ${response.statusCode}');
+        String errorMsg = 'HTTP Error: ${response.statusCode}';
+        print("❌ HTTP Error: ${response.statusCode}");
+        print("=" * 60);
+        showError(errorMsg);
+        setState(() {
+          isLoading = false;
+        });
       }
     } catch (e) {
+      print("❌ EXCEPTION in fetchInvoiceDetails");
+      print("=" * 60);
+      print("💥 Error: $e");
+      print("=" * 60);
       showError('An error occurred: $e');
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
   Future<void> loadCompanyDetails() async {
     try {
+      print("🏢 Loading company details...");
       final companyData = await apiServices.fetchCompanyDetails();
-      if (companyData != null) {
+      if (companyData != null && companyData.isNotEmpty) {
         setState(() {
           companyDatas = companyData;
         });
+        print("✅ Company data loaded successfully");
+        if (companyData.containsKey('companydet')) {
+          print("🏭 Company Name: ${companyData['companydet'][0]['com_name']}");
+        }
       } else {
-        showError("No company data found.");
+        print("⚠️ No company data found");
+        // Create a default company data structure
+        setState(() {
+          companyDatas = {
+            'companydet': [
+              {
+                'com_name': 'Company Name',
+                'address': 'Company Address',
+                'phone': 'Phone Number',
+                'gst_no': 'GST Number',
+                'terms_cond': 'Terms and Conditions'
+              }
+            ]
+          };
+        });
+        print("ℹ️ Using default company data");
       }
     } catch (e) {
-      showError("Error: $e");
+      print("❌ Error loading company details: $e");
+      // Create a default company data structure in case of error
+      setState(() {
+        companyDatas = {
+          'companydet': [
+            {
+              'com_name': 'Company Name',
+              'address': 'Company Address',
+              'phone': 'Phone Number',
+              'gst_no': 'GST Number',
+              'terms_cond': 'Terms and Conditions'
+            }
+          ]
+        };
+      });
+      print("ℹ️ Using default company data due to error");
     }
   }
 
   void showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(message),
+        content: Text(message, style: const TextStyle(fontSize: 12)),
         backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
       ));
     }
   }
 
-  // Helper function to clean HTML tags and special characters
   String cleanHtmlText(String? text) {
     if (text == null || text.isEmpty) return '';
-    
-    // Remove HTML tags
     String cleaned = text.replaceAll(RegExp(r'<[^>]*>'), '');
-    
-    // Replace common HTML entities
     cleaned = cleaned.replaceAll('&nbsp;', ' ');
     cleaned = cleaned.replaceAll('&amp;', '&');
     cleaned = cleaned.replaceAll('&lt;', '<');
     cleaned = cleaned.replaceAll('&gt;', '>');
     cleaned = cleaned.replaceAll('&quot;', '"');
     cleaned = cleaned.replaceAll('&#39;', "'");
-    
-    // Replace multiple spaces with single space
     cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ');
-    
-    // Trim whitespace
     return cleaned.trim();
   }
 
@@ -191,7 +274,7 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.SizedBox(height: 16),
+              pw.SizedBox(height: 8),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.center,
                 children: [
@@ -199,19 +282,17 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                     "Invoice",
                     style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 14,
                     ),
                   ),
                 ]
               ),
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: 4),
               pw.Divider(),
-              pw.SizedBox(height: 8),
-              // Company and Customer Details
+              pw.SizedBox(height: 4),
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  // Company Details
                   pw.Expanded(
                     flex: 2,
                     child: pw.Column(
@@ -221,24 +302,20 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                           "Company Details",
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 12,
                           ),
                         ),
-                        pw.SizedBox(height: 4),
-                        pw.Text(cleanHtmlText(companyDetails['com_name']),
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(height: 2),
+                        pw.Text(cleanHtmlText(companyDetails['com_name'])),
                         pw.Text(cleanHtmlText(companyDetails['address'])),
-                        pw.Text("Ph: ${cleanHtmlText(companyDetails['phone'])}"),
-                        pw.Text("GST: ${cleanHtmlText(companyDetails['gst_no'])}"),
-                        pw.Text("Invoice No: ${cleanHtmlText(invoiceData!['inv_no'])}", 
-                               style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                        pw.Text("Date: ${cleanHtmlText(invoiceData!['inv_date'])}", 
-                               style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        pw.Text("Ph: ${cleanHtmlText(companyDetails['phone'])}", style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text("GST: ${cleanHtmlText(companyDetails['gst_no'])}", style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text("Invoice No: ${cleanHtmlText(invoiceData!['inv_no'])}", style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text("Date: ${cleanHtmlText(invoiceData!['inv_date'])}", style: const pw.TextStyle(fontSize: 10)),
                       ],
                     ),
                   ),
-                  pw.SizedBox(width: 16),
-                  // Customer Details
+                  pw.SizedBox(width: 8),
                   pw.Expanded(
                     flex: 2,
                     child: pw.Column(
@@ -248,24 +325,22 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                           "Customer Details",
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 12,
                           ),
                         ),
-                        pw.SizedBox(height: 4),
-                        pw.Text(cleanHtmlText(customerDetails['custname']),
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(height: 2),
+                        pw.Text(cleanHtmlText(customerDetails['custname'])),
                         pw.Text(cleanHtmlText(customerDetails['address'])),
-                        pw.Text("Ph: ${cleanHtmlText(customerDetails['phone'])}"),
-                        pw.Text("GST: ${cleanHtmlText(customerDetails['gst_no'])}"),
-                        pw.Text("State: ${cleanHtmlText(customerDetails['state'])} (${cleanHtmlText(customerDetails['state_code'])})"),
+                        pw.Text("Ph: ${cleanHtmlText(customerDetails['phone'])}", style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text("GST: ${cleanHtmlText(customerDetails['gst_no'])}", style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text("State: ${cleanHtmlText(customerDetails['state'])} (${cleanHtmlText(customerDetails['state_code'])})", style: const pw.TextStyle(fontSize: 10)),
                       ],
                     ),
                   ),
                 ],
               ),
               pw.Divider(),
-              // Items Table
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: 4),
               pw.Table(
                 border: const pw.TableBorder(
                   horizontalInside: pw.BorderSide(width: 0.5),
@@ -276,121 +351,118 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                   right: pw.BorderSide(width: 1),
                 ),
                 children: [
-                  // Table Header
                   pw.TableRow(
                     decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                     children: [
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
+                        padding: const pw.EdgeInsets.all(2),
                         child: pw.Text("Item Name",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                             textAlign: pw.TextAlign.left),
                       ),
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
+                        padding: const pw.EdgeInsets.all(2),
                         child: pw.Text("HSN Code",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                             textAlign: pw.TextAlign.center),
                       ),
                       if (invoiceData?["batch_validate"] == "yes")
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text("Batch No",
-                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                               textAlign: pw.TextAlign.center),
                         ),
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
+                        padding: const pw.EdgeInsets.all(2),
                         child: pw.Text("Qty",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                             textAlign: pw.TextAlign.center),
                       ),
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
+                        padding: const pw.EdgeInsets.all(2),
                         child: pw.Text("Rate",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                             textAlign: pw.TextAlign.right),
                       ),
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
+                        padding: const pw.EdgeInsets.all(2),
                         child: pw.Text("GST",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                             textAlign: pw.TextAlign.center),
                       ),
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
+                        padding: const pw.EdgeInsets.all(2),
                         child: pw.Text("Disc",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                             textAlign: pw.TextAlign.right),
                       ),
                       pw.Padding(
-                        padding: const pw.EdgeInsets.all(4),
+                        padding: const pw.EdgeInsets.all(2),
                         child: pw.Text("Total",
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
                             textAlign: pw.TextAlign.right),
                       ),
                     ],
                   ),
-                  // Table Data
                   ...items.map((item) {
                     return pw.TableRow(
                       children: [
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(cleanHtmlText(item['itm_name']),
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 8),
                               textAlign: pw.TextAlign.left),
                         ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(cleanHtmlText(item['hsncode']),
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 8),
                               textAlign: pw.TextAlign.center),
                         ),
                         if (invoiceData?["batch_validate"] == "yes")
                           pw.Padding(
-                            padding: const pw.EdgeInsets.all(4),
+                            padding: const pw.EdgeInsets.all(2),
                             child: pw.Text(cleanHtmlText(item['batch']) ?? '',
-                                style: const pw.TextStyle(fontSize: 10),
+                                style: const pw.TextStyle(fontSize: 8),
                                 textAlign: pw.TextAlign.center),
                           ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(item['qty'].toString(),
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 8),
                               textAlign: pw.TextAlign.center),
                         ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(cleanHtmlText(item['unrate']),
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 8),
                               textAlign: pw.TextAlign.right),
                         ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(cleanHtmlText(item['gst']),
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 8),
                               textAlign: pw.TextAlign.center),
                         ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(cleanHtmlText(item['spl_amt']),
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 8),
                               textAlign: pw.TextAlign.right),
                         ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(cleanHtmlText(item['crt_ttl_amt']),
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 8),
                               textAlign: pw.TextAlign.right),
                         ),
                       ],
                     );
-                  }),
+                  }).toList(),
                 ],
               ),
-              pw.SizedBox(height: 16),
-              // GST and Totals
+              pw.SizedBox(height: 8),
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
@@ -401,9 +473,10 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                       children: [
                         pw.Text(
                           "In Words: ${cleanHtmlText(invoiceData!['ttl_amt_words'])}",
-                          style: const pw.TextStyle(fontSize: 12),
+                          style: const pw.TextStyle(fontSize: 10),
                         ),
-                        pw.SizedBox(height: 8),
+                        pw.SizedBox(height: 4),
+                        if (invoiceGST.isNotEmpty)
                         pw.TableHelper.fromTextArray(
                           headers: ["GST", "CGST", "SGST", "IGST"],
                           data: invoiceGST.map((gst) {
@@ -414,10 +487,10 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                               cleanHtmlText(gst['igst_amt']),
                             ];
                           }).toList(),
-                          cellStyle: const pw.TextStyle(fontSize: 10),
+                          cellStyle: const pw.TextStyle(fontSize: 8),
                           headerStyle: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 10,
+                            fontSize: 8,
                           ),
                           headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
                           border: const pw.TableBorder(
@@ -428,25 +501,25 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                           ),
                           cellAlignment: pw.Alignment.center,
                         ),
-                        pw.SizedBox(height: 16),
+                        pw.SizedBox(height: 8),
                       ],
                     ),
                   ),
-                  pw.SizedBox(width: 16),
+                  pw.SizedBox(width: 8),
                   pw.Expanded(
                     flex: 2,
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text("Taxable Value:"),
-                        pw.Text("Total GST:"),
-                        pw.Text("Discount:"),
-                        pw.Text("Round Off:"),
+                        pw.Text("Taxable Value:", style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text("Total GST:", style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text("Discount:", style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text("Round Off:", style: const pw.TextStyle(fontSize: 10)),
                         pw.Text(
                           "Total Amount:",
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 10,
                           ),
                         ),
                       ],
@@ -457,15 +530,15 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text(cleanHtmlText(invoiceData!['tax_value'])),
-                        pw.Text(cleanHtmlText(invoiceData!['ttl_gst_amt'])),
-                        pw.Text(cleanHtmlText(invoiceData!['ttl_disc_amt'])),
-                        pw.Text(cleanHtmlText(invoiceData!['roundoff'])),
+                        pw.Text(cleanHtmlText(invoiceData!['tax_value']), style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text(cleanHtmlText(invoiceData!['ttl_gst_amt']), style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text(cleanHtmlText(invoiceData!['ttl_disc_amt']), style: const pw.TextStyle(fontSize: 10)),
+                        pw.Text(cleanHtmlText(invoiceData!['roundoff']), style: const pw.TextStyle(fontSize: 10)),
                         pw.Text(
                           cleanHtmlText(invoiceData!['ttl_amt']),
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 10,
                           ),
                         ),
                       ],
@@ -474,11 +547,11 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                 ],
               ),
               pw.Divider(),
-              pw.Text(cleanHtmlText(companyDetails['terms_cond'])),
+              pw.Text(cleanHtmlText(companyDetails['terms_cond']), style: const pw.TextStyle(fontSize: 10)),
               pw.Divider(),
               pw.Text(
                 "Declaration: Certified that all the particulars shown in the above Tax invoice are true and correct and that my/our registration under GST Act-2017 is valid as on the date of bill.",
-                style: const pw.TextStyle(fontSize: 10),
+                style: const pw.TextStyle(fontSize: 8),
               ),
             ],
           );
@@ -498,10 +571,10 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading || invoiceData == null || companyDatas == null) {
+    if (isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Invoice Details'),
+          title: const Text('Invoice Details', style: TextStyle(fontSize: 18)),
           backgroundColor: AppTheme.primaryColor,
           centerTitle: true,
         ),
@@ -509,60 +582,88 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
       );
     }
 
+    // Show error state if data failed to load
+    if (invoiceData == null || companyDatas == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Invoice Details', style: TextStyle(fontSize: 18)),
+          backgroundColor: AppTheme.primaryColor,
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text('Failed to load invoice details', style: TextStyle(fontSize: 16)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    isLoading = true;
+                  });
+                  fetchInvoiceDetails();
+                  loadCompanyDetails();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final companyDetails = companyDatas!['companydet'][0];
     final customerDetails = invoiceData!['customerdet'][0];
-    final items = invoiceData!['invoicecartdet'];
-    final invoiceGST = invoiceData!['invoicegst'];
+    final items = invoiceData!['invoicecartdet'] as List<dynamic>;
+    final invoiceGST = invoiceData!['invoicegst'] as List<dynamic>;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Invoice Details'),
+        title: const Text('Invoice Details', style: TextStyle(fontSize: 18)),
         backgroundColor: AppTheme.primaryColor,
         centerTitle: true,
         actions: [
-          // Print Icon Button
           IconButton(
             icon: isPrinting
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
-                : const Icon(Icons.print),
+                : const Icon(Icons.print, size: 20),
             onPressed: isPrinting ? null : printPdf,
             tooltip: 'Print',
           ),
-          // Share Icon Button
           IconButton(
             icon: isSharing
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 16,
+                    height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
-                : const Icon(Icons.share),
+                : const Icon(Icons.share, size: 20),
             onPressed: isSharing ? null : sharePdf,
             tooltip: 'Share',
           ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(8.0),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Company and Customer Details
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Company Details
                   Expanded(
                     flex: 2,
                     child: Column(
@@ -570,34 +671,26 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                       children: [
                         const Text(
                           "Company Details",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                         ),
-                        const SizedBox(height: 8),
-                        Text(cleanHtmlText(companyDetails['com_name']),
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text(cleanHtmlText(companyDetails['com_name']), style: const TextStyle(fontSize: 10)),
                         if (cleanHtmlText(companyDetails['phone']).isNotEmpty) ...[
-                          Text(cleanHtmlText(companyDetails['phone']), 
-                               style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(cleanHtmlText(companyDetails['phone']), style: const TextStyle(fontSize: 10)),
                         ],
                         if (cleanHtmlText(companyDetails['address']).isNotEmpty) ...[
-                          Text(capitalizeWords(cleanHtmlText(companyDetails['address']))),
+                          Text(capitalizeWords(cleanHtmlText(companyDetails['address'])), style: const TextStyle(fontSize: 10)),
                         ],
                         if (cleanHtmlText(companyDetails['gst_no']).isNotEmpty) ...[
-                          Text('GST No: ${cleanHtmlText(companyDetails['gst_no'])}'),
+                          Text('GST No: ${cleanHtmlText(companyDetails['gst_no'])}', style: const TextStyle(fontSize: 10)),
                         ],
-                        const SizedBox(height: 8),
-                        Text("Invoice No: ${cleanHtmlText(invoiceData!['inv_no'])}", 
-                             style: const TextStyle(fontWeight: FontWeight.bold)),
-                        Text("Date: ${cleanHtmlText(invoiceData!['inv_date'])}", 
-                             style: const TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text("Invoice No: ${cleanHtmlText(invoiceData!['inv_no'])}", style: const TextStyle(fontSize: 10)),
+                        Text("Date: ${cleanHtmlText(invoiceData!['inv_date'])}", style: const TextStyle(fontSize: 10)),
                       ],
                     ),
                   ),
-                  
-    
-                  const SizedBox(width: 16),
-                  
-                  // Customer Details
+                  const SizedBox(width: 8),
                   Expanded(
                     flex: 2,
                     child: Column(
@@ -605,264 +698,253 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                       children: [
                         const Text(
                           "Customer Details",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                         ),
-                        const SizedBox(height: 8),
-                        Text(cleanHtmlText(customerDetails['custname']),
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text(cleanHtmlText(customerDetails['custname']), style: const TextStyle(fontSize: 10)),
                         if (cleanHtmlText(customerDetails['phone']).isNotEmpty) ...[
-                          Text(cleanHtmlText(customerDetails['phone']), 
-                               style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(cleanHtmlText(customerDetails['phone']), style: const TextStyle(fontSize: 10)),
                         ],
                         if (cleanHtmlText(customerDetails['address']).isNotEmpty) ...[
-                          Text(capitalizeWords(cleanHtmlText(customerDetails['address']))),
+                          Text(capitalizeWords(cleanHtmlText(customerDetails['address'])), style: const TextStyle(fontSize: 10)),
                         ],
                         if (cleanHtmlText(customerDetails['gst_no']).isNotEmpty) ...[
-                          Text('GST No: ${cleanHtmlText(customerDetails['gst_no'])}'),
+                          Text('GST No: ${cleanHtmlText(customerDetails['gst_no'])}', style: const TextStyle(fontSize: 10)),
                         ],
-                        Text("State: ${cleanHtmlText(customerDetails['state'])} (${cleanHtmlText(customerDetails['state_code'])})"),
+                        Text("State: ${cleanHtmlText(customerDetails['state'])} (${cleanHtmlText(customerDetails['state_code'])})", style: const TextStyle(fontSize: 10)),
                       ],
                     ),
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               const Divider(),
-              const SizedBox(height: 16),
-              
-              // Items Table
+              const SizedBox(height: 8),
               Table(
-                border: TableBorder.all(color: Colors.black),
+                border: TableBorder.all(color: Colors.black, width: 0.5),
                 columnWidths: invoiceData?["batch_validate"] == "yes"
                     ? {
                         0: const FlexColumnWidth(3),
-                        1: const FlexColumnWidth(2),
-                        2: const FlexColumnWidth(2),
-                        3: const FlexColumnWidth(2),
-                        4: const FlexColumnWidth(2),
-                        5: const FlexColumnWidth(2),
-                        6: const FlexColumnWidth(2),
-                        7: const FlexColumnWidth(2),
+                        1: const FlexColumnWidth(1.5),
+                        2: const FlexColumnWidth(1.5),
+                        3: const FlexColumnWidth(1),
+                        4: const FlexColumnWidth(1.5),
+                        5: const FlexColumnWidth(1),
+                        6: const FlexColumnWidth(1.5),
+                        7: const FlexColumnWidth(1.5),
                       }
                     : {
                         0: const FlexColumnWidth(3),
-                        1: const FlexColumnWidth(2),
-                        2: const FlexColumnWidth(2),
-                        3: const FlexColumnWidth(2),
-                        4: const FlexColumnWidth(2),
-                        5: const FlexColumnWidth(2),
-                        6: const FlexColumnWidth(2),
+                        1: const FlexColumnWidth(1.5),
+                        2: const FlexColumnWidth(1),
+                        3: const FlexColumnWidth(1.5),
+                        4: const FlexColumnWidth(1),
+                        5: const FlexColumnWidth(1.5),
+                        6: const FlexColumnWidth(1.5),
                       },
                 children: [
-                  // Table Header
                   TableRow(
                     decoration: const BoxDecoration(color: Colors.grey),
                     children: invoiceData?["batch_validate"] == "yes"
-                        ? const [
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                        ? [
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Item Name",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.left),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("HSN Code",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.center),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Batch No",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.center),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Qty",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.center),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Rate",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.right),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
-                              child: Text("Disc Amount",
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
+                              child: Text("Disc",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.right),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("GST",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.center),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Total",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.right),
                             ),
                           ]
-                        : const [
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                        : [
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Item Name",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.left),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("HSN Code",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.center),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Qty",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.center),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Rate",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.right),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
-                              child: Text("Disc Amount",
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
+                              child: Text("Disc",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.right),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("GST",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.center),
                             ),
-                            Padding(
-                              padding: EdgeInsets.all(4.0),
+                            const Padding(
+                              padding: EdgeInsets.all(2.0),
                               child: Text("Total",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                                   textAlign: TextAlign.right),
                             ),
                           ],
                   ),
-                  
-                  // Table Data
-                 ...items.map((item) {
-  return TableRow(
-    children: invoiceData?["batch_validate"] == "yes"
-        ? [
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['itm_name']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.left),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['hsncode']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.center),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['batch']) ?? "N/A",
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.center),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['qty'].toString()),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.center),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['unrate']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.right),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['spl_amt']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.right),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['gst']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.center),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['crt_ttl_amt']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.right),
-            ),
-          ]
-        : [
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['itm_name']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.left),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['hsncode']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.center),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['qty'].toString()),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.center),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['unrate']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.right),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['spl_amt']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.right),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['gst']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.center),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(cleanHtmlText(item['crt_ttl_amt']),
-                  style: const TextStyle(fontSize: 6),
-                  textAlign: TextAlign.right),
-            ),
-          ],
-  );
-}).toList(),
+                  ...items.map((item) {
+                    return TableRow(
+                      children: invoiceData?["batch_validate"] == "yes"
+                          ? [
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['itm_name']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.left),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['hsncode']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.center),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['batch']) ?? "N/A",
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.center),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['qty'].toString()),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.center),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['unrate']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.right),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['spl_amt']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.right),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['gst']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.center),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['crt_ttl_amt']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.right),
+                              ),
+                            ]
+                          : [
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['itm_name']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.left),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['hsncode']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.center),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['qty'].toString()),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.center),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['unrate']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.right),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['spl_amt']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.right),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['gst']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.center),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(2.0),
+                                child: Text(cleanHtmlText(item['crt_ttl_amt']),
+                                    style: const TextStyle(fontSize: 8),
+                                    textAlign: TextAlign.right),
+                              ),
+                            ],
+                    );
+                  }).toList(),
                 ],
               ),
-              
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               const Divider(),
-              const SizedBox(height: 16),
-              
-              // Totals Section
+              const SizedBox(height: 8),
               Row(
                 children: [
                   const Expanded(
@@ -870,14 +952,13 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text("Taxable Value:"),
-                        Text("Total GST:"),
-                        Text("Discount:"),
-                        Text("Round Off:"),
+                        Text("Taxable Value:", style: TextStyle(fontSize: 10)),
+                        Text("Total GST:", style: TextStyle(fontSize: 10)),
+                        Text("Discount:", style: TextStyle(fontSize: 10)),
+                        Text("Round Off:", style: TextStyle(fontSize: 10)),
                         Text(
                           "Total Amount:",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
                         ),
                       ],
                     ),
@@ -887,40 +968,34 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text("${invoiceData!['tax_value']}"),
-                        Text("${invoiceData!['ttl_gst_amt']}"),
-                        Text("${invoiceData!['ttl_disc_amt']}"),
-                        Text("${invoiceData!['roundoff']}"),
+                        Text("${invoiceData!['tax_value']}", style: const TextStyle(fontSize: 10)),
+                        Text("${invoiceData!['ttl_gst_amt']}", style: const TextStyle(fontSize: 10)),
+                        Text("${invoiceData!['ttl_disc_amt']}", style: const TextStyle(fontSize: 10)),
+                        Text("${invoiceData!['roundoff']}", style: const TextStyle(fontSize: 10)),
                         Text(
                           "${invoiceData!['ttl_amt']}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               const Divider(),
-              const SizedBox(height: 16),
-              
-              // Amount in Words
+              const SizedBox(height: 8),
               Text(
                 "In Words: ${invoiceData!['ttl_amt_words']}",
-                style: const TextStyle(fontSize: 14),
+                style: const TextStyle(fontSize: 10),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 3,
               ),
-              
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               const Divider(),
-              const SizedBox(height: 16),
-              
-              // GST Breakdown Table
+              const SizedBox(height: 8),
+              if (invoiceGST.isNotEmpty)
               Table(
-                border: TableBorder.all(width: 1),
+                border: TableBorder.all(width: 0.5),
                 columnWidths: const {
                   0: FlexColumnWidth(),
                   1: FlexColumnWidth(),
@@ -928,64 +1003,57 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                   3: FlexColumnWidth(),
                 },
                 children: [
-                  // Table Header
                   TableRow(
                     decoration: BoxDecoration(color: Colors.grey.shade400),
                     children: const [
                       TableCell(
                         child: Padding(
-                          padding: EdgeInsets.all(8.0),
+                          padding: EdgeInsets.all(2.0),
                           child: Text(
                             'GST',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 8),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                             textAlign: TextAlign.center,
                           ),
                         ),
                       ),
                       TableCell(
                         child: Padding(
-                          padding: EdgeInsets.all(8.0),
+                          padding: EdgeInsets.all(2.0),
                           child: Text(
                             'CGST',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 8),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                             textAlign: TextAlign.center,
                           ),
                         ),
                       ),
                       TableCell(
                         child: Padding(
-                          padding: EdgeInsets.all(8.0),
+                          padding: EdgeInsets.all(2.0),
                           child: Text(
                             'SGST',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 8),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                             textAlign: TextAlign.center,
                           ),
                         ),
                       ),
                       TableCell(
                         child: Padding(
-                          padding: EdgeInsets.all(8.0),
+                          padding: EdgeInsets.all(2.0),
                           child: Text(
                             'IGST',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 8),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8),
                             textAlign: TextAlign.center,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  
-                  // Table Rows (Data)
                   ...invoiceGST.map((gst) {
                     return TableRow(
                       children: [
                         TableCell(
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.all(2.0),
                             child: Text(
                               gst['gst'].toString(),
                               style: const TextStyle(fontSize: 8),
@@ -995,7 +1063,7 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                         ),
                         TableCell(
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.all(2.0),
                             child: Text(
                               gst['cgst_amt'].toString(),
                               style: const TextStyle(fontSize: 8),
@@ -1005,7 +1073,7 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                         ),
                         TableCell(
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.all(2.0),
                             child: Text(
                               gst['sgst_amt'].toString(),
                               style: const TextStyle(fontSize: 8),
@@ -1015,7 +1083,7 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                         ),
                         TableCell(
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: const EdgeInsets.all(2.0),
                             child: Text(
                               gst['igst_amt'].toString(),
                               style: const TextStyle(fontSize: 8),
@@ -1028,27 +1096,21 @@ class _InvoiceViewScreenState extends State<InvoiceViewScreen> {
                   }).toList(),
                 ],
               ),
-              
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               const Divider(),
-              const SizedBox(height: 16),
-              
-              // Terms and Conditions
+              const SizedBox(height: 8),
               if (companyDetails['terms_cond'] != null &&
                   companyDetails['terms_cond'].toString().isNotEmpty)
                 Text(
                   companyDetails['terms_cond'],
-                  style: const TextStyle(fontSize: 12),
+                  style: const TextStyle(fontSize: 10),
                 ),
-              
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               const Divider(),
-              const SizedBox(height: 16),
-              
-              // Declaration
+              const SizedBox(height: 8),
               const Text(
                 "Declaration: Certified that all the particulars shown in the above Tax invoice are true and correct and that my/our registration under GST Act-2017 is valid as on the date of bill.",
-                style: TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 10),
               ),
             ],
           ),

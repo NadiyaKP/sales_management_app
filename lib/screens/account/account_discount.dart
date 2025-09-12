@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
+import '../../theme/app_theme.dart'; 
 
 class AccountDiscountPage extends StatefulWidget {
   final String? customerName;
@@ -758,118 +759,124 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Date Selection Row
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'From Date',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                         
-                        ),
-                        child: TextField(
-                          controller: _fromDateController,
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
-                          ),
-                          readOnly: true,
-                          onTap: () => _selectDate(context, _fromDateController, true),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'To Date',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                         
-                        ),
-                        child: TextField(
-                          controller: _toDateController,
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
-                          ),
-                          readOnly: true,
-                          onTap: () => _selectDate(context, _toDateController, false),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            
+Row(
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'From Date',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
             ),
-
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: TextField(
+              controller: _fromDateController,
+              style: const TextStyle(
+                fontSize: 12, 
+                color: Colors.black87,
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
+              ),
+              readOnly: true,
+              onTap: () => _selectDate(context, _fromDateController, true),
+            ),
+          ),
+        ],
+      ),
+    ),
+    const SizedBox(width: 16),
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'To Date',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: TextField(
+              controller: _toDateController,
+              style: const TextStyle(
+                fontSize: 12, 
+                color: Colors.black87,
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
+              ),
+              readOnly: true,
+              onTap: () => _selectDate(context, _toDateController, false),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ],
+),
             const SizedBox(height: 16),
 
-            // Excel and Print Buttons - Placed below date selection
-            if (discountRecords.isNotEmpty && !isLoading)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _exportToExcel,
-                    icon: const Icon(Icons.file_download, size: 14),
-                    label: const Text('Excel'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[800],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      textStyle: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: _printDiscountReport,
-                    icon: const Icon(Icons.print, size: 14),
-                    label: const Text('Print'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      textStyle: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-
-            const SizedBox(height: 24),
+            // Excel and Print buttons
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printDiscountReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
 
             // Report Title  
             Center(
@@ -878,7 +885,7 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                 'Discount Report From ${_fromDateController.text} To ${_toDateController.text}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
@@ -911,15 +918,15 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                       const Text(
                         'Discount Received:',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: Colors.black87,
                         ),
                       ),
                       Text(
-                        '₹$totalReceivedAmount',
+                        '$totalReceivedAmount',
                         style: const TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.green,
                         ),
@@ -933,15 +940,15 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                       const Text(
                         'Discount Allowed:',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: Colors.black87,
                         ),
                       ),
                       Text(
-                        '₹$totalGivenAmount',
+                        '$totalGivenAmount',
                         style: const TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.red,
                         ),
@@ -961,15 +968,15 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                       const Text(
                         'Net Discount:',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
                       ),
                       Text(
-                        '₹${(double.parse(totalReceivedAmount.replaceAll(',', '')) - double.parse(totalGivenAmount.replaceAll(',', ''))).toStringAsFixed(2)}',
+                        '${(double.parse(totalReceivedAmount.replaceAll(',', '')) - double.parse(totalGivenAmount.replaceAll(',', ''))).toStringAsFixed(2)}',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: (double.parse(totalReceivedAmount.replaceAll(',', '')) - double.parse(totalGivenAmount.replaceAll(',', ''))) >= 0 
                               ? Colors.green 
@@ -996,7 +1003,7 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                     const Text(
                       'Loading discount data...',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 12,
                         color: Colors.grey,
                       ),
                     ),
@@ -1015,24 +1022,16 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                     const SizedBox(height: 16),
                     Text(
                       'No discount records found for $_customerName\nin the selected date range.',
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '${_fromDateController.text} to ${_toDateController.text}',
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _fetchDiscountData,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Refresh'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
+                    
                   ],
                 ),
               )
@@ -1044,7 +1043,7 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                   Text(
                     'Discount Records (${discountRecords.length})',
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
@@ -1077,7 +1076,7 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                               child: Text(
                                 record.transactionType,
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: record.transactionType == 'Discount Allowed' 
                                       ? Colors.red.shade700
@@ -1115,10 +1114,10 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                             ),
                             Text(
                               record.transactionType == 'Discount Allowed' 
-                                  ? '₹${record.givenAmount}' 
-                                  : '₹${record.receivedAmount}',
+                                  ? '${record.givenAmount}' 
+                                  : '${record.receivedAmount}',
                               style: TextStyle(
-                                fontSize: 24,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: record.transactionType == 'Discount Allowed' 
                                     ? Colors.red 
@@ -1132,7 +1131,7 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                           const Text(
                             'Notes:',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: Colors.black87,
                             ),
@@ -1149,7 +1148,7 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
                             child: Text(
                               record.notes,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.black54,
                                 height: 1.4,
                               ),

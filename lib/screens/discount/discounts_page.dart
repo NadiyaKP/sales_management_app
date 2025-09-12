@@ -13,7 +13,6 @@ import 'new_discount_page.dart';
 import '../../services/api_service.dart';
 import '../../services/permission.dart';
 
-// Discount model class
 class Discount {
   final String date;
   final String name;
@@ -39,7 +38,6 @@ class Discount {
     );
   }
 
-  // Convert to Map for easier handling
   Map<String, dynamic> toMap() {
     return {
       'no': dscId,
@@ -52,7 +50,6 @@ class Discount {
   }
 }
 
-// Permission variables
 String discountAdd = '';
 String discountDueAmount = '';
 String discountDateChange = '';
@@ -79,13 +76,10 @@ class _DiscountsPageState extends State<DiscountsPage> {
   final int maxVisiblePages = 3;
 
   List<Discount> _discounts = [];
-  List<Discount> filteredDiscounts = [];
   int discountsTotal = 0;
   bool isLoading = false;
 
   List<String> customerNames = [];
-  String? selectedCustomer;
-  String? selectedCustId;
   Map<String, String> customerIdMap = {};
   Map<String, String> customerAmountMap = {};
   bool _isLoadingCustomers = true;
@@ -121,9 +115,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
     try {
       final response = await http.post(
         Uri.parse('$url/discounts.php'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "unid": unid,
           "slex": slex,
@@ -135,11 +127,11 @@ class _DiscountsPageState extends State<DiscountsPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['result'] == "1") {
-          discountsTotal = data['ttldiscounts'];
+          // FIX: Parse ttldiscounts as string and convert to int
+          discountsTotal = int.tryParse(data['ttldiscounts']?.toString() ?? '0') ?? 0;
           final List<dynamic> discountsList = data['discountdet'] ?? [];
           setState(() {
             _discounts = discountsList.map((json) => Discount.fromJson(json)).toList();
-            filteredDiscounts = _discounts;
           });
           if (discountsList.isEmpty) {
             _showError('No discounts data found');
@@ -165,15 +157,12 @@ class _DiscountsPageState extends State<DiscountsPage> {
     try {
       final apiService = ApiServices();
       final permissionData = await apiService.fetchPermissionDetails();
-
       if (permissionData == null) {
         throw Exception('Failed to fetch permissions: Data is null.');
       }
-
       if (permissionData.permissionDetails.isEmpty) {
         throw Exception('Received empty permissions data from the API.');
       }
-
       return permissionData;
     } catch (e) {
       debugPrint('Error fetching permissions: $e');
@@ -207,22 +196,25 @@ class _DiscountsPageState extends State<DiscountsPage> {
   Future<void> loadCustomers() async {
     try {
       List<Map<String, String>> customers = await apiServices.fetchCustomers();
-      setState(() {
-        customerNames = customers.map((e) => e["cust_name"]!).toList();
-        customerIdMap = {for (var e in customers) e["cust_name"]!: e["custid"]!};
-        customerAmountMap = {for (var e in customers) e["cust_name"]!: e["outstand_amt"]!};
-        _isLoadingCustomers = false;
-      });
+      if (mounted) {
+        setState(() {
+          customerNames = customers.map((e) => e["cust_name"]!).toList();
+          customerIdMap = {for (var e in customers) e["cust_name"]!: e["custid"]!};
+          customerAmountMap = {for (var e in customers) e["cust_name"]!: e["outstand_amt"]!};
+          _isLoadingCustomers = false;
+        });
+      }
     } catch (e) {
       _showError(e.toString());
-      setState(() {
-        _isLoadingCustomers = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingCustomers = false;
+        });
+      }
     }
   }
 
-  Future<Map<String, dynamic>> _saveDiscountData(String action,
-      {String? dscId, String reason = ""}) async {
+  Future<Map<String, dynamic>> _saveDiscountData(String action, {String? dscId, String reason = ""}) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? url = prefs.getString('url');
@@ -318,8 +310,8 @@ class _DiscountsPageState extends State<DiscountsPage> {
       MaterialPageRoute(builder: (_) => const NewDiscountPage()),
     );
 
-    if (result != null) {
-      fetchDiscounts(); // Refresh the list
+    if (result != null && mounted) {
+      fetchDiscounts(); 
       _showSuccess('New discount added successfully!');
     }
   }
@@ -329,8 +321,6 @@ class _DiscountsPageState extends State<DiscountsPage> {
       _showError('You do not have permission to edit discounts');
       return;
     }
-
-    // Show edit dialog instead of navigating to NewDiscountPage
     _showEditDiscountDialog(discount);
   }
 
@@ -347,7 +337,6 @@ class _DiscountsPageState extends State<DiscountsPage> {
     List<String> filteredCustomers = [];
     bool isLoading = false;
 
-    // Initialize with current discount data
     try {
       selectedDate = DateFormat("dd/MM/yyyy").parse(discount.date);
     } catch (e) {
@@ -368,35 +357,36 @@ class _DiscountsPageState extends State<DiscountsPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          // Filter customers based on search text
           void filterCustomers() {
             final searchText = customerNameController.text.toLowerCase();
-            setDialogState(() {
-              if (searchText.isEmpty) {
-                filteredCustomers = List.from(customerNames);
-              } else {
-                filteredCustomers = customerNames
-                    .where((customer) => customer.toLowerCase().contains(searchText))
-                    .toList();
-              }
-            });
+            if (mounted) {
+              setDialogState(() {
+                if (searchText.isEmpty) {
+                  filteredCustomers = List.from(customerNames);
+                } else {
+                  filteredCustomers = customerNames
+                      .where((customer) => customer.toLowerCase().contains(searchText))
+                      .toList();
+                }
+              });
+            }
           }
 
-          // Handle customer selection from dropdown
           void selectCustomer(String customerName) {
-            setDialogState(() {
-              selectedCustomerId = customerIdMap[customerName];
-              selectedCustomerName = customerName;
-              customerNameController.text = customerName;
-              dueAmountController.text = customerAmountMap[customerName] ?? '0';
-              isCustomerDropdownOpen = false;
-              if (discountAmountController.text.isNotEmpty) {
-                formKey.currentState?.validate();
-              }
-            });
+            if (mounted) {
+              setDialogState(() {
+                selectedCustomerId = customerIdMap[customerName];
+                selectedCustomerName = customerName;
+                customerNameController.text = customerName;
+                dueAmountController.text = customerAmountMap[customerName] ?? '0';
+                isCustomerDropdownOpen = false;
+                if (discountAmountController.text.isNotEmpty) {
+                  formKey.currentState?.validate();
+                }
+              });
+            }
           }
 
-          // Build customer dropdown widget
           Widget buildCustomerDropdown() {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,40 +395,49 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   controller: customerNameController,
                   decoration: InputDecoration(
                     labelText: 'Customer Name',
+                    labelStyle: const TextStyle(fontSize: 12),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: Colors.grey),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: Colors.grey),
                     ),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                     suffixIcon: IconButton(
-                      icon: Icon(isCustomerDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down),
+                      icon: Icon(
+                        isCustomerDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                        size: 18,
+                      ),
                       onPressed: () {
-                        setDialogState(() {
-                          isCustomerDropdownOpen = !isCustomerDropdownOpen;
-                          if (isCustomerDropdownOpen) {
-                            filterCustomers();
-                          }
-                        });
+                        if (mounted) {
+                          setDialogState(() {
+                            isCustomerDropdownOpen = !isCustomerDropdownOpen;
+                            if (isCustomerDropdownOpen) {
+                              filterCustomers();
+                            }
+                          });
+                        }
                       },
                     ),
                   ),
+                  style: const TextStyle(fontSize: 12),
                   onTap: () {
-                    setDialogState(() {
-                      isCustomerDropdownOpen = !isCustomerDropdownOpen;
-                      if (isCustomerDropdownOpen) {
-                        filterCustomers();
-                      }
-                    });
+                    if (mounted) {
+                      setDialogState(() {
+                        isCustomerDropdownOpen = !isCustomerDropdownOpen;
+                        if (isCustomerDropdownOpen) {
+                          filterCustomers();
+                        }
+                      });
+                    }
                   },
                   onChanged: (value) {
                     filterCustomers();
@@ -452,11 +451,11 @@ class _DiscountsPageState extends State<DiscountsPage> {
                 ),
                 if (isCustomerDropdownOpen)
                   Container(
-                    height: 200,
+                    height: 150,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.grey.withOpacity(0.3),
@@ -472,7 +471,11 @@ class _DiscountsPageState extends State<DiscountsPage> {
                       itemBuilder: (context, index) {
                         final customer = filteredCustomers[index];
                         return ListTile(
-                          title: Text(customer),
+                          dense: true,
+                          title: Text(
+                            customer,
+                            style: const TextStyle(fontSize: 12),
+                          ),
                           onTap: () {
                             selectCustomer(customer);
                           },
@@ -484,73 +487,66 @@ class _DiscountsPageState extends State<DiscountsPage> {
             );
           }
 
-          InputDecoration inputDecoration(String label) {
-            return InputDecoration(
-              labelText: label,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.grey),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.grey),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            );
-          }
-
-          Future<void> selectDate(BuildContext context) async {
-            final DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: selectedDate,
-              firstDate: DateTime(2000),
-              lastDate: DateTime.now(), 
-            );
-            if (picked != null && picked != selectedDate) {
-              setDialogState(() {
-                selectedDate = picked;
-              });
-            }
-          }
-
           Future<void> submitForm() async {
-            if (formKey.currentState!.validate()) {
-              setDialogState(() {
-                isLoading = true;
-              });
+  if (formKey.currentState!.validate()) {
+    if (mounted) {
+      setDialogState(() {
+        isLoading = true;
+      });
+    }
 
-              try {
-                Map<String, dynamic> result = await _saveDiscountDataForEdit(
-                  selectedCustomerName ?? '',
-                  selectedCustomerId ?? '',
-                  notesController.text.trim(),
-                  DateFormat('dd-MM-yyyy').format(selectedDate),
-                  discountAmountController.text.trim(),
-                  discount.dscId,
-                );
+    try {
+      Map<String, dynamic> result = await _saveDiscountDataForEdit(
+        selectedCustomerName ?? '',
+        selectedCustomerId ?? '',
+        notesController.text.trim(),
+        DateFormat('dd-MM-yyyy').format(selectedDate),
+        discountAmountController.text.trim(),
+        discount.dscId,
+      );
 
-                if (result['result'] == '1') {
-                  Navigator.pop(context);
-                  fetchDiscounts(); // Refresh the list
-                  _showSuccess(result['message'] ?? 'Discount updated successfully');
-                } else {
-                  _showError(result['message'] ?? 'Failed to update discount');
-                }
-              } catch (e) {
-                _showError('An error occurred: $e');
-              } finally {
-                setDialogState(() {
-                  isLoading = false;
-                });
-              }
-            }
+      // Enhanced response handling
+      print('Edit Discount Final Result: $result'); // Debug log
+      
+      if (result['result'] == '1' || result['result'] == 1) {
+        Navigator.pop(context);
+        if (mounted) {
+          await fetchDiscounts(); // Ensure data refresh completes
+          _showSuccess(result['message'] ?? 'Discount updated successfully');
+        }
+      } else {
+        String errorMessage = result['message'] ?? 'Failed to update discount';
+        
+        // Handle specific error cases
+        if (result.containsKey('errors') && result['errors'] is List) {
+          List<dynamic> errors = result['errors'];
+          if (errors.isNotEmpty) {
+            errorMessage = errors.join(', ');
           }
+        }
+        
+        _showError(errorMessage);
+      }
+    } catch (e) {
+      print('Submit Form Error: $e'); // Debug log
+      _showError('An error occurred while updating: $e');
+    } finally {
+      // FIX: Use a try-catch to handle the case where the dialog context is no longer valid
+      try {
+        // Check if the widget is still mounted and the dialog context is still valid
+        if (mounted && Navigator.of(context).canPop()) {
+          setDialogState(() {
+            isLoading = false;
+          });
+        }
+      } catch (e) {
+        // If we can't access the context, just set the loading state to false
+        // This can happen if the dialog was already closed
+        print('Error updating loading state: $e');
+      }
+    }
+  }
+}
 
           return Dialog(
             child: ConstrainedBox(
@@ -561,9 +557,8 @@ class _DiscountsPageState extends State<DiscountsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Dialog Title
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     decoration: const BoxDecoration(
                       color: AppTheme.primaryColor,
                       borderRadius:  BorderRadius.only(
@@ -575,42 +570,39 @@ class _DiscountsPageState extends State<DiscountsPage> {
                       children: [
                         const Expanded(
                           child: Text(
-                            'EDIT DISCOUNT',
+                            'Edit Discount',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close, color: Colors.white),
+                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
                       ],
                     ),
                   ),
-                  // Dialog Content
                   Flexible(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Form(
                         key: formKey,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Customer Name with Dropdown
                             buildCustomerDropdown(),
-                            const SizedBox(height: 16),
-
-                            // Due Amount - read-only
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: dueAmountController,
                               keyboardType: TextInputType.number,
-                              decoration: inputDecoration('Due Amount'),
+                              decoration: _inputDecoration('Due Amount'),
+                              style: const TextStyle(fontSize: 12),
                               readOnly: true,
                               enabled: false,
                               validator: (value) {
@@ -620,25 +612,23 @@ class _DiscountsPageState extends State<DiscountsPage> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 16),
-
-                            // Discount Date
+                            const SizedBox(height: 12),
                             InkWell(
-                              onTap: () => selectDate(context),
+                              onTap: () => _selectDate(context, setDialogState, selectedDate),
                               child: InputDecorator(
-                                decoration: inputDecoration('Discount Date'),
+                                decoration: _inputDecoration('Discount Date'),
                                 child: Text(
-                                  DateFormat.yMMMMd().format(selectedDate),
+                                  DateFormat('dd/MM/yyyy').format(selectedDate),
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
-
-                            // Discount Amount
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: discountAmountController,
                               keyboardType: TextInputType.number,
-                              decoration: inputDecoration('Discount Amount'),
+                              decoration: _inputDecoration('Discount Amount'),
+                              style: const TextStyle(fontSize: 11),
                               onChanged: (value) {
                                 formKey.currentState?.validate();
                               },
@@ -657,7 +647,6 @@ class _DiscountsPageState extends State<DiscountsPage> {
                                   return 'Enter a valid amount with up to 2 decimal places';
                                 }
                                 
-                                // Validate against due amount
                                 if (dueAmountController.text.isNotEmpty) {
                                   final dueAmount = double.tryParse(dueAmountController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
                                   if (number > dueAmount) {
@@ -667,12 +656,11 @@ class _DiscountsPageState extends State<DiscountsPage> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 16),
-
-                            // Notes
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: notesController,
-                              decoration: inputDecoration('Notes'),
+                              decoration: _inputDecoration('Notes'),
+                              style: const TextStyle(fontSize: 12),
                               maxLines: 2,
                             ),
                           ],
@@ -680,9 +668,8 @@ class _DiscountsPageState extends State<DiscountsPage> {
                       ),
                     ),
                   ),
-                  // Dialog Actions
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
                       borderRadius: const BorderRadius.only(
@@ -695,24 +682,24 @@ class _DiscountsPageState extends State<DiscountsPage> {
                       children: [
                         TextButton(
                           onPressed: isLoading ? null : () => Navigator.pop(context),
-                          child: const Text('Cancel'),
+                          child: const Text('CANCEL', style: TextStyle(fontSize: 12)),
                         ),
                         const SizedBox(width: 8),
                         SizedBox(
-                          height: 32,
+                          height: 28,
                           child: ElevatedButton(
                             onPressed: isLoading ? null : submitForm,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color.fromARGB(255, 32, 104, 163),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: isLoading 
                                 ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
+                                    width: 14,
+                                    height: 14,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -733,7 +720,42 @@ class _DiscountsPageState extends State<DiscountsPage> {
     );
   }
 
-  // Save discount data for editing
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(fontSize: 11),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.grey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.grey),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+    );
+  }
+
+  Future<void> _selectDate(BuildContext context, StateSetter setDialogState, DateTime currentDate) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: currentDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(), 
+    );
+    if (picked != null && mounted) {
+      setDialogState(() {
+        // This will update the date in the dialog state
+      });
+    }
+  }
+
   Future<Map<String, dynamic>> _saveDiscountDataForEdit(
     String customerName,
     String customerId,
@@ -764,28 +786,35 @@ class _DiscountsPageState extends State<DiscountsPage> {
         "dscid": dscId,
       };
 
+      print('Edit Discount Request: ${jsonEncode(requestBody)}'); // Debug log
+
       final response = await http.post(
         Uri.parse('$url/action/discounts.php'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(requestBody),
       );
 
+      print('Edit Discount Response Status: ${response.statusCode}'); // Debug log
+      print('Edit Discount Response Body: ${response.body}'); // Debug log
+
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final responseData = json.decode(response.body);
+        
+        // Enhanced response validation
+        if (responseData is Map<String, dynamic>) {
+          return responseData;
+        } else {
+          return {"result": "0", "message": "Invalid response format from server"};
+        }
       } else {
-        return {"result": "0", "message": "Failed to update discount"};
+        return {
+          "result": "0", 
+          "message": "Server error: ${response.statusCode} - ${response.reasonPhrase}"
+        };
       }
     } catch (e) {
+      print('Edit Discount Error: $e'); // Debug log
       return {"result": "0", "message": "Network error: $e"};
-    }
-  }
-
-  String _parseDateString(String dateStr) {
-    try {
-      DateTime parsedDate = DateFormat("dd/MM/yyyy").parse(dateStr);
-      return DateFormat('yyyy-MM-dd').format(parsedDate);
-    } catch (e) {
-      return DateFormat('yyyy-MM-dd').format(DateTime.now());
     }
   }
 
@@ -806,7 +835,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("coremicron.in says"),
+        title: const Text(""),
         content: const Text("Are you sure that you want to delete the discount?"),
         actions: <Widget>[
           TextButton(
@@ -815,7 +844,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
               
               Map<String, dynamic> result = await _saveDiscountData('delete', dscId: discount.dscId);
 
-              if (result['result'] == '1') {
+              if (result['result'] == '1' && mounted) {
                 setState(() {
                   fetchDiscounts();
                 });
@@ -843,7 +872,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Discount', style: TextStyle(color: Colors.red)),
+        title: const Text('Delete Discount', style: TextStyle(color: Colors.red, fontSize: 14)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -851,7 +880,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
             children: [
               const Text(
                 'Are you sure you want to delete this discount?',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               const SizedBox(height: 16),
               _buildDialogRow('Name:', discount.name),
@@ -877,7 +906,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Cancel', style: TextStyle(fontSize: 13)),
+              child: const Text('Cancel', style: TextStyle(fontSize: 12)),
             ),
           ),
           SizedBox(
@@ -899,7 +928,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   reason: reasonController.text,
                 );
 
-                if (result['result'] == '1') {
+                if (result['result'] == '1' && mounted) {
                   setState(() {
                     fetchDiscounts();
                   });
@@ -915,7 +944,7 @@ class _DiscountsPageState extends State<DiscountsPage> {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Delete', style: TextStyle(fontSize: 13)),
+              child: const Text('Delete', style: TextStyle(fontSize: 12)),
             ),
           ),
         ],
@@ -923,37 +952,30 @@ class _DiscountsPageState extends State<DiscountsPage> {
     );
   }
 
- Widget _buildDialogRow(String label, String value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.right,
-            maxLines: 1, 
-            overflow: TextOverflow.ellipsis, 
-            softWrap: false, 
+  Widget _buildDialogRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w500),
           ),
-        ),
-      ],
-    ),
-  );
-}
-  String _capitalizeWords(String text) {
-    return text.split(' ').map((word) {
-      return word.isNotEmpty
-          ? word[0].toUpperCase() + word.substring(1).toLowerCase()
-          : '';
-    }).join(' ');
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.right,
+              maxLines: 1, 
+              overflow: TextOverflow.ellipsis, 
+              softWrap: false, 
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showError(String message) {
@@ -972,25 +994,46 @@ class _DiscountsPageState extends State<DiscountsPage> {
     ));
   }
 
+  DateTime? _parseDate(String dateStr) {
+    try {
+      if (dateStr.contains('-')) {
+        return DateTime.parse(dateStr);
+      } else if (dateStr.contains('/')) {
+        List<String> parts = dateStr.split('/');
+        if (parts.length == 3) {
+          return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  String _formatDate(String dateStr) {
+    DateTime? date = _parseDate(dateStr);
+    if (date != null) {
+      return DateFormat('dd-MM-yyyy').format(date);
+    }
+    return dateStr;
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+    if (isLoading && _discounts.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('DISCOUNTS'),
+          backgroundColor: AppTheme.primaryColor,
+          centerTitle: true,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    final start = (currentPage - 1) * itemsPerPage;
-    final end = (start + itemsPerPage > filteredDiscounts.length)
-        ? filteredDiscounts.length
-        : start + itemsPerPage;
-    final currentList = filteredDiscounts.sublist(start, end);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DISCOUNTS'),
-        centerTitle: true,
+        title: const Text('Discounts'),
         backgroundColor: AppTheme.primaryColor,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -1001,52 +1044,185 @@ class _DiscountsPageState extends State<DiscountsPage> {
       body: Column(
         children: [
           Expanded(
-            child: currentList.isEmpty
-                ? const Center(child: Text('No discounts found.'))
+            child: _discounts.isEmpty
+                ? const Center(child: Text("No discounts found.", style: TextStyle(fontSize: 16)))
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: currentList.length,
+                    padding: const EdgeInsets.all(10),
+                    itemCount: _discounts.length,
                     itemBuilder: (context, index) {
-                      final discount = currentList[index];
+                      final discount = _discounts[index];
                       return Card(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        elevation: 3,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                        elevation: 1.5,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                          ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildRow('Name', capitalizeWords(discount.name)),
-                              _buildRow(
-                                'Date',
-                                _formatDate(discount.date),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(8),
+                                    topRight: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        discount.name,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color.fromARGB(255, 5, 38, 76),
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          _formatDate(discount.date),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                              _buildRow('Notes', capitalizeWords(discount.notes)),
-                              _buildRow('Discount', discount.amount, color: Colors.orange.shade700),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (discountEdit == "yes")
-                                    _buildActionButton(
-                                      icon: Icons.edit,
-                                      label: 'Edit',
-                                      backgroundColor: const Color.fromARGB(255, 5, 38, 76),
-                                      onPressed: () => _editDiscount(discount),
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Notes',
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    color: Colors.grey.shade600,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  discount.notes,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Container(
+                                            height: 24,
+                                            width: 1,
+                                            color: Colors.grey.shade300,
+                                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                                          ),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  'Discount',
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    color: Colors.grey.shade600,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  discount.amount,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.orange.shade700,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  if (discountEdit == "yes" && discountDelete == "yes")
-                                    const SizedBox(width: 6),
-                                  if (discountDelete == "yes")
-                                    _buildActionButton(
-                                      icon: Icons.delete,
-                                      label: 'Delete',
-                                      backgroundColor: Colors.red.shade700,
-                                      onPressed: () => _deleteDiscount(discount),
+                                    const SizedBox(height: 8),
+                                    Align(
+                                      alignment: Alignment.bottomRight,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          if (discountEdit == "yes")
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                                foregroundColor: Colors.white,
+                                                elevation: 1,
+                                                padding: const EdgeInsets.all(6),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                minimumSize: const Size(0, 0),
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
+                                              onPressed: () => _editDiscount(discount),
+                                              child: const Icon(Icons.edit, size: 12, color: Colors.white),
+                                            ),
+                                          if (discountEdit == "yes" && discountDelete == "yes")
+                                            const SizedBox(width: 6),
+                                          if (discountDelete == "yes")
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.red.shade600,
+                                                foregroundColor: Colors.white,
+                                                elevation: 1,
+                                                padding: const EdgeInsets.all(6),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                minimumSize: const Size(0, 0),
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
+                                              onPressed: () => _deleteDiscount(discount),
+                                              child: const Icon(Icons.delete, size: 12, color: Colors.white),
+                                            ),
+                                        ],
+                                      ),
                                     ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -1077,64 +1253,11 @@ class _DiscountsPageState extends State<DiscountsPage> {
       ),
     );
   }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color backgroundColor,
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 16, color: Colors.white),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 12, color: Colors.white),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      onPressed: onPressed,
-    );
-  }
-
-  Widget _buildRow(String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w500)),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: color ?? Colors.black87,
-              ),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(String dateStr) {
-    try {
-      DateTime parsedDate = DateFormat("dd/MM/yyyy").parse(dateStr);
-      return DateFormat.yMMMMd().format(parsedDate);
-    } catch (e) {
-      return dateStr; // Return original if parsing fails
-    }
-  }
 }
 
-// Helper functions
 double parseFormattedAmount(String formattedAmount) {
-  final cleanString = formattedAmount.replaceAll(',', ''); // Remove commas
-  return double.tryParse(cleanString) ?? 0.0; // Convert to number
+  final cleanString = formattedAmount.replaceAll(',', '');
+  return double.tryParse(cleanString) ?? 0.0;
 }
 
 String capitalizeWords(String text) {

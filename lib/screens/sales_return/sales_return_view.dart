@@ -99,12 +99,12 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(16),
+        margin: const pw.EdgeInsets.all(12),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.SizedBox(height: 16),
+              pw.SizedBox(height: 8),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.center,
                 children: [
@@ -112,14 +112,14 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                     "Credit Note",
                     style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
-              pw.SizedBox(height: 8),
-              pw.Divider(),
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: 4),
+              pw.Divider(thickness: 0.5),
+              pw.SizedBox(height: 4),
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
@@ -132,27 +132,40 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                           "Customer Name",
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 10,
                           ),
                         ),
-                        pw.SizedBox(height: 4),
+                        pw.SizedBox(height: 2),
                         pw.Text(
                           customerDetails['custname'] ?? '',
-                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                          style: pw.TextStyle(
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 9,
+                          ),
                         ),
                         if (customerDetails['address']?.isNotEmpty == true)
-                          pw.Text(customerDetails['address']),
+                          pw.Text(
+                            customerDetails['address'],
+                            style: const pw.TextStyle(fontSize: 8),
+                          ),
                         if (customerDetails['phone']?.isNotEmpty == true)
-                          pw.Text("Ph: ${customerDetails['phone']}"),
+                          pw.Text(
+                            "Ph: ${customerDetails['phone']}",
+                            style: const pw.TextStyle(fontSize: 8),
+                          ),
                         if (customerDetails['gst_no']?.isNotEmpty == true)
-                          pw.Text("GST: ${customerDetails['gst_no']}"),
+                          pw.Text(
+                            "GST: ${customerDetails['gst_no']}",
+                            style: const pw.TextStyle(fontSize: 8),
+                          ),
                         pw.Text(
                           "State: ${customerDetails['state'] ?? ''} (${customerDetails['state_code'] ?? ''})",
+                          style: const pw.TextStyle(fontSize: 8),
                         ),
                       ],
                     ),
                   ),
-                  pw.SizedBox(width: 16),
+                  pw.SizedBox(width: 8),
                   pw.Expanded(
                     flex: 2,
                     child: pw.Column(
@@ -162,19 +175,31 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                           children: [
                             pw.Text(
                               "Credit Note No: ",
-                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                              style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 9,
+                              ),
                             ),
-                            pw.Text(salesReturnData!['crd_no'] ?? ''),
+                            pw.Text(
+                              salesReturnData!['crd_no'] ?? '',
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
                           ],
                         ),
-                        pw.SizedBox(height: 8),
+                        pw.SizedBox(height: 4),
                         pw.Row(
                           children: [
                             pw.Text(
                               "Date: ",
-                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                              style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 9,
+                              ),
                             ),
-                            pw.Text(salesReturnData!['crd_date'] ?? ''),
+                            pw.Text(
+                              salesReturnData!['crd_date'] ?? '',
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
                           ],
                         ),
                       ],
@@ -183,40 +208,44 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                 ],
               ),
               pw.SizedBox(height: 4),
-              pw.Divider(),
-              pw.SizedBox(height: 8),
+              pw.Divider(thickness: 0.5),
+              pw.SizedBox(height: 4),
               if (style == "without_product")
                 pw.Table(
                   border: const pw.TableBorder(
-                    horizontalInside: pw.BorderSide(width: 0.5),
-                    verticalInside: pw.BorderSide(width: 0.5),
-                    top: pw.BorderSide(width: 1),
-                    bottom: pw.BorderSide(width: 1),
-                    left: pw.BorderSide(width: 1),
-                    right: pw.BorderSide(width: 1),
+                    horizontalInside: pw.BorderSide(width: 0.3),
+                    verticalInside: pw.BorderSide(width: 0.3),
+                    top: pw.BorderSide(width: 0.5),
+                    bottom: pw.BorderSide(width: 0.5),
+                    left: pw.BorderSide(width: 0.5),
+                    right: pw.BorderSide(width: 0.5),
                   ),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(3),
+                    1: const pw.FlexColumnWidth(1),
+                  },
                   children: [
                     pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                      decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                       children: [
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(
                             "Particulars",
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 8,
                             ),
                             textAlign: pw.TextAlign.left,
                           ),
                         ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(
-                            "Total Amount",
+                            "Amount",
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 8,
                             ),
                             textAlign: pw.TextAlign.right,
                           ),
@@ -227,18 +256,18 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                       return pw.TableRow(
                         children: [
                           pw.Padding(
-                            padding: const pw.EdgeInsets.all(4),
+                            padding: const pw.EdgeInsets.all(2),
                             child: pw.Text(
                               item['itm_name'] ?? '',
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 7),
                               textAlign: pw.TextAlign.left,
                             ),
                           ),
                           pw.Padding(
-                            padding: const pw.EdgeInsets.all(4),
+                            padding: const pw.EdgeInsets.all(2),
                             child: pw.Text(
                               item['crt_ttl_amt'] ?? '0.00',
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 7),
                               textAlign: pw.TextAlign.right,
                             ),
                           ),
@@ -250,46 +279,51 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
               else
                 pw.Table(
                   border: const pw.TableBorder(
-                    horizontalInside: pw.BorderSide(width: 0.5),
-                    verticalInside: pw.BorderSide(width: 0.5),
-                    top: pw.BorderSide(width: 1),
-                    bottom: pw.BorderSide(width: 1),
-                    left: pw.BorderSide(width: 1),
-                    right: pw.BorderSide(width: 1),
+                    horizontalInside: pw.BorderSide(width: 0.3),
+                    verticalInside: pw.BorderSide(width: 0.3),
+                    top: pw.BorderSide(width: 0.5),
+                    bottom: pw.BorderSide(width: 0.5),
+                    left: pw.BorderSide(width: 0.5),
+                    right: pw.BorderSide(width: 0.5),
                   ),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(2),
+                    1: const pw.FlexColumnWidth(2),
+                    2: const pw.FlexColumnWidth(1),
+                  },
                   children: [
                     pw.TableRow(
-                      decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                      decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                       children: [
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(
                             "Item",
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 8,
                             ),
                             textAlign: pw.TextAlign.left,
                           ),
                         ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(
                             "Particulars",
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 8,
                             ),
                             textAlign: pw.TextAlign.left,
                           ),
                         ),
                         pw.Padding(
-                          padding: const pw.EdgeInsets.all(4),
+                          padding: const pw.EdgeInsets.all(2),
                           child: pw.Text(
-                            "Total Amount",
+                            "Amount",
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
-                              fontSize: 10,
+                              fontSize: 8,
                             ),
                             textAlign: pw.TextAlign.right,
                           ),
@@ -300,26 +334,26 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                       return pw.TableRow(
                         children: [
                           pw.Padding(
-                            padding: const pw.EdgeInsets.all(4),
+                            padding: const pw.EdgeInsets.all(2),
                             child: pw.Text(
                               item['itm_name'] ?? '',
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 7),
                               textAlign: pw.TextAlign.left,
                             ),
                           ),
                           pw.Padding(
-                            padding: const pw.EdgeInsets.all(4),
+                            padding: const pw.EdgeInsets.all(2),
                             child: pw.Text(
                               item['itm_name'] ?? '',
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 7),
                               textAlign: pw.TextAlign.left,
                             ),
                           ),
                           pw.Padding(
-                            padding: const pw.EdgeInsets.all(4),
+                            padding: const pw.EdgeInsets.all(2),
                             child: pw.Text(
                               item['crt_ttl_amt'] ?? '0.00',
-                              style: const pw.TextStyle(fontSize: 10),
+                              style: const pw.TextStyle(fontSize: 7),
                               textAlign: pw.TextAlign.right,
                             ),
                           ),
@@ -328,7 +362,7 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                     }),
                   ],
                 ),
-              pw.SizedBox(height: 16),
+              pw.SizedBox(height: 8),
               pw.Row(
                 children: [
                   pw.Expanded(
@@ -336,18 +370,33 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text("Total Amount:"),
-                        pw.Text("GST Amount:"),
+                        pw.Text(
+                          "Total Amount:",
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
+                        pw.Text(
+                          "GST Amount:",
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
                         if (salesReturnData!['cess_name']?.isNotEmpty == true)
-                          pw.Text("${salesReturnData!['cess_name']}:"),
-                        pw.Text("Discount Amount:"),
+                          pw.Text(
+                            "${salesReturnData!['cess_name']}:",
+                            style: const pw.TextStyle(fontSize: 8),
+                          ),
+                        pw.Text(
+                          "Discount Amount:",
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
                         if (salesReturnData!['roundoff'] != null)
-                          pw.Text("Round Off:"),
+                          pw.Text(
+                            "Round Off:",
+                            style: const pw.TextStyle(fontSize: 8),
+                          ),
                         pw.Text(
                           "Net Amount:",
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 10,
                           ),
                         ),
                       ],
@@ -358,18 +407,33 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text("${salesReturnData!['tax_value'] ?? '0.00'}"),
-                        pw.Text("${salesReturnData!['ttl_gst_amt'] ?? '0.00'}"),
+                        pw.Text(
+                          "${salesReturnData!['tax_value'] ?? '0.00'}",
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
+                        pw.Text(
+                          "${salesReturnData!['ttl_gst_amt'] ?? '0.00'}",
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
                         if (salesReturnData!['cess_name']?.isNotEmpty == true)
-                          pw.Text("${salesReturnData!['ttl_cess_amt'] ?? '0.00'}"),
-                        pw.Text("${salesReturnData!['ttl_disc_amt'] ?? '0.00'}"),
+                          pw.Text(
+                            "${salesReturnData!['ttl_cess_amt'] ?? '0.00'}",
+                            style: const pw.TextStyle(fontSize: 8),
+                          ),
+                        pw.Text(
+                          "${salesReturnData!['ttl_disc_amt'] ?? '0.00'}",
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
                         if (salesReturnData!['roundoff'] != null)
-                          pw.Text("${salesReturnData!['roundoff'] ?? '0.00'}"),
+                          pw.Text(
+                            "${salesReturnData!['roundoff'] ?? '0.00'}",
+                            style: const pw.TextStyle(fontSize: 8),
+                          ),
                         pw.Text(
                           "${salesReturnData!['ttl_amt'] ?? '0.00'}",
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 10,
                           ),
                         ),
                       ],
@@ -377,18 +441,20 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                   ),
                 ],
               ),
-              pw.SizedBox(height: 8),
-              pw.Divider(),
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: 4),
+              pw.Divider(thickness: 0.5),
+              pw.SizedBox(height: 4),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
                     "Authorised Signature",
+                    style: const pw.TextStyle(fontSize: 8),
                     textAlign: pw.TextAlign.center,
                   ),
                   pw.Text(
                     "Customer Signature",
+                    style: const pw.TextStyle(fontSize: 8),
                     textAlign: pw.TextAlign.center,
                   ),
                 ],
@@ -403,20 +469,11 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
 
   Future<void> sharePdf() async {
     try {
-      // Generate the PDF
       final pdf = generateCreditNotePdf();
-      
-      // Get the application documents directory
       final directory = await getApplicationDocumentsDirectory();
       final path = directory.path;
-      
-      // Create a file to save the PDF
       final file = File('$path/credit_note_${salesReturnData!['crd_no']}.pdf');
-      
-      // Save the PDF to the file
       await file.writeAsBytes(await pdf.save());
-      
-      // Share the PDF file
       await Share.shareFiles(
         [file.path],
         text: 'Credit Note ${salesReturnData!['crd_no']}',
@@ -440,7 +497,7 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
     if (isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Sales Return'),
+          title: const Text('Sales Return', style: TextStyle(fontSize: 18)),
           backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
         ),
@@ -451,14 +508,14 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
     if (salesReturnData == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Sales Return'),
+          title: const Text('Sales Return', style: TextStyle(fontSize: 18)),
           backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
         ),
         body: const Center(
           child: Text(
             'Failed to load sales return details',
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 12),
           ),
         ),
       );
@@ -470,12 +527,12 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sales Return Details'),
+        title: const Text('Sales Return Details', style: TextStyle(fontSize: 18)),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.print),
+            icon: const Icon(Icons.print, size: 18),
             onPressed: () {
               final pdf = generateCreditNotePdf();
               Printing.layoutPdf(
@@ -484,18 +541,18 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.share),
+            icon: const Icon(Icons.share, size: 18),
             onPressed: sharePdf,
           ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(8.0),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -506,27 +563,37 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                       children: [
                         Text(
                           customerDetails['custname'] ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                         if (customerDetails['phone']?.isNotEmpty == true) ...[
                           Text(
                             customerDetails['phone'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontSize: 10),
                           ),
                         ],
                         if (customerDetails['address']?.isNotEmpty == true) ...[
-                          Text(capitalizeWords(customerDetails['address'])),
+                          Text(
+                            capitalizeWords(customerDetails['address']),
+                            style: const TextStyle(fontSize: 10),
+                          ),
                         ],
                         if (customerDetails['gst_no']?.isNotEmpty == true) ...[
-                          Text('GST No: ${customerDetails['gst_no']}'),
+                          Text(
+                            'GST No: ${customerDetails['gst_no']}',
+                            style: const TextStyle(fontSize: 10),
+                          ),
                         ],
                         Text(
                           "State: ${customerDetails['state'] ?? ''} (${customerDetails['state_code'] ?? ''})",
+                          style: const TextStyle(fontSize: 10),
                         ),
                       ],
                     ),
                   ),
-                  const VerticalDivider(),
+                  const VerticalDivider(width: 8, thickness: 0.5),
                   Expanded(
                     flex: 2,
                     child: Column(
@@ -536,18 +603,31 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                           children: [
                             const Text(
                               "Credit Note No: ",
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
                             ),
-                            Text(salesReturnData!['crd_no'] ?? ''),
+                            Text(
+                              salesReturnData!['crd_no'] ?? '',
+                              style: const TextStyle(fontSize: 10),
+                            ),
                           ],
                         ),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             const Text(
                               "Date: ",
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
                             ),
-                            Text(salesReturnData!['crd_date'] ?? ''),
+                            Text(
+                              salesReturnData!['crd_date'] ?? '',
+                              style: const TextStyle(fontSize: 10),
+                            ),
                           ],
                         ),
                       ],
@@ -555,38 +635,38 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              const Divider(),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
+              const Divider(thickness: 0.5),
+              const SizedBox(height: 4),
               if (style == "without_product")
                 Table(
-                  border: TableBorder.all(color: Colors.black),
+                  border: TableBorder.all(color: Colors.black, width: 0.5),
                   columnWidths: const {
                     0: FlexColumnWidth(3),
-                    1: FlexColumnWidth(2),
+                    1: FlexColumnWidth(1),
                   },
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   children: [
                     const TableRow(
                       decoration: BoxDecoration(color: Colors.grey),
                       children: [
                         Padding(
-                          padding: EdgeInsets.all(4.0),
+                          padding: EdgeInsets.all(2.0),
                           child: Text(
                             "Particulars",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 8,
+                              fontSize: 10,
                             ),
-                            textAlign: TextAlign.left,
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.all(4.0),
+                          padding: EdgeInsets.all(2.0),
                           child: Text(
                             "Amount",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 8,
+                              fontSize: 10,
                             ),
                             textAlign: TextAlign.right,
                           ),
@@ -597,18 +677,17 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                       return TableRow(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.all(4.0),
+                            padding: const EdgeInsets.all(2.0),
                             child: Text(
                               item['itm_name'] ?? '',
-                              style: const TextStyle(fontSize: 6),
-                              textAlign: TextAlign.left,
+                              style: const TextStyle(fontSize: 9),
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.all(4.0),
+                            padding: const EdgeInsets.all(2.0),
                             child: Text(
                               item['crt_ttl_amt'] ?? '0.00',
-                              style: const TextStyle(fontSize: 6),
+                              style: const TextStyle(fontSize: 9),
                               textAlign: TextAlign.right,
                             ),
                           ),
@@ -619,33 +698,44 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                 )
               else
                 Table(
-                  border: TableBorder.all(color: Colors.black),
+                  border: TableBorder.all(color: Colors.black, width: 0.5),
                   columnWidths: const {
-                    0: FlexColumnWidth(3),
+                    0: FlexColumnWidth(2),
                     1: FlexColumnWidth(2),
+                    2: FlexColumnWidth(1),
                   },
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   children: [
                     const TableRow(
                       decoration: BoxDecoration(color: Colors.grey),
                       children: [
                         Padding(
-                          padding: EdgeInsets.all(4.0),
+                          padding: EdgeInsets.all(2.0),
+                          child: Text(
+                            "Item",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(2.0),
                           child: Text(
                             "Particulars",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 8,
+                              fontSize: 10,
                             ),
-                            textAlign: TextAlign.left,
                           ),
                         ),
                         Padding(
-                          padding: EdgeInsets.all(4.0),
+                          padding: EdgeInsets.all(2.0),
                           child: Text(
                             "Amount",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 8,
+                              fontSize: 10,
                             ),
                             textAlign: TextAlign.right,
                           ),
@@ -656,18 +746,24 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                       return TableRow(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.all(4.0),
+                            padding: const EdgeInsets.all(2.0),
                             child: Text(
                               item['itm_name'] ?? '',
-                              style: const TextStyle(fontSize: 6),
-                              textAlign: TextAlign.left,
+                              style: const TextStyle(fontSize: 9),
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.all(4.0),
+                            padding: const EdgeInsets.all(2.0),
+                            child: Text(
+                              item['itm_name'] ?? '',
+                              style: const TextStyle(fontSize: 9),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
                             child: Text(
                               item['crt_ttl_amt'] ?? '0.00',
-                              style: const TextStyle(fontSize: 6),
+                              style: const TextStyle(fontSize: 9),
                               textAlign: TextAlign.right,
                             ),
                           ),
@@ -677,8 +773,8 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                   ],
                 ),
               const SizedBox(height: 8),
-              const Divider(),
-              const SizedBox(height: 8),
+              const Divider(thickness: 0.5),
+              const SizedBox(height: 4),
               Row(
                 children: [
                   const Expanded(
@@ -686,16 +782,31 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text("Total Amount:"),
-                        Text("GST Amount:"),
-                        Text("Cess Amount:"),
-                        Text("Discount Amount:"),
-                        Text("Round Off:"),
+                        Text(
+                          "Total Amount:",
+                          style: TextStyle(fontSize: 10),
+                        ),
+                        Text(
+                          "GST Amount:",
+                          style: TextStyle(fontSize: 10),
+                        ),
+                        Text(
+                          "Cess Amount:",
+                          style: TextStyle(fontSize: 10),
+                        ),
+                        Text(
+                          "Discount Amount:",
+                          style: TextStyle(fontSize: 10),
+                        ),
+                        Text(
+                          "Round Off:",
+                          style: TextStyle(fontSize: 10),
+                        ),
                         Text(
                           "Net Amount:",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -706,16 +817,31 @@ class _SalesReturnViewScreenState extends State<SalesReturnViewScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text("${salesReturnData!['tax_value'] ?? '0.00'}"),
-                        Text("${salesReturnData!['ttl_gst_amt'] ?? '0.00'}"),
-                        Text("${salesReturnData!['ttl_cess_amt'] ?? '0.00'}"),
-                        Text("${salesReturnData!['ttl_disc_amt'] ?? '0.00'}"),
-                        Text("${salesReturnData!['roundoff'] ?? '0.00'}"),
+                        Text(
+                          "${salesReturnData!['tax_value'] ?? '0.00'}",
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                        Text(
+                          "${salesReturnData!['ttl_gst_amt'] ?? '0.00'}",
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                        Text(
+                          "${salesReturnData!['ttl_cess_amt'] ?? '0.00'}",
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                        Text(
+                          "${salesReturnData!['ttl_disc_amt'] ?? '0.00'}",
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                        Text(
+                          "${salesReturnData!['roundoff'] ?? '0.00'}",
+                          style: const TextStyle(fontSize: 10),
+                        ),
                         Text(
                           "${salesReturnData!['ttl_amt'] ?? '0.00'}",
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 12,
                           ),
                         ),
                       ],

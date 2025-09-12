@@ -490,21 +490,22 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
+      labelStyle: const TextStyle(fontSize: 12),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: Colors.grey),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: Colors.grey),
       ),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
     );
   }
 
@@ -515,6 +516,7 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
       children: [
         TextFormField(
           controller: _customerNameController,
+          style: const TextStyle(fontSize: 12),
           decoration: _inputDecoration('Customer Name').copyWith(
             suffixIcon: GestureDetector(
               onTap: () {
@@ -532,7 +534,7 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
               child: Icon(
                 _isCustomerDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                 color: AppTheme.primaryColor,
-                size: 30,
+                size: 24,
               ),
             ),
           ),
@@ -567,30 +569,30 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
         ),
         if (_isCustomerDropdownOpen)
           Container(
-            height: 200,
-            margin: const EdgeInsets.only(top: 5),
+            height: 180,
+            margin: const EdgeInsets.only(top: 4),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.3),
                   spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: const Offset(0, 3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: _filteredCustomers.isEmpty
                 ? const Center(
                     child: Padding(
-                      padding: EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(12.0),
                       child: Text(
                         'No customers found',
                         style: TextStyle(
                           color: Colors.grey,
-                          fontSize: 16,
+                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -612,6 +614,7 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                           title: Text(
                             _capitalizeWords(customer['cust_name']!),
                             style: TextStyle(
+                              fontSize: 12,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               color: isSelected ? AppTheme.primaryColor : Colors.black87,
                             ),
@@ -620,14 +623,14 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                             'Due: ₹${customer['outstand_amt']}',
                             style: TextStyle(
                               color: isSelected ? AppTheme.primaryColor : Colors.grey[600],
-                              fontSize: 12,
+                              fontSize: 10,
                             ),
                           ),
                           trailing: isSelected 
                               ? const Icon(
                                   Icons.check_circle,
                                   color: AppTheme.primaryColor,
-                                  size: 20,
+                                  size: 16,
                                 )
                               : null,
                           onTap: () => _selectCustomer(customer),
@@ -635,9 +638,10 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                               ? AppTheme.primaryColor.withOpacity(0.1)
                               : null,
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
+                            horizontal: 12,
+                            vertical: 2,
                           ),
+                          dense: true,
                         );
                       },
                     ),
@@ -665,11 +669,13 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
               suffixIcon: Icon(
                 _isWalletDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                 color: AppTheme.primaryColor,
+                size: 24,
               ),
             ),
             child: Text(
               _paymentMethod ?? 'Select account',
               style: TextStyle(
+                fontSize: 12,
                 color: _paymentMethod != null ? Colors.black : Colors.grey[600],
               ),
             ),
@@ -677,23 +683,28 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
         ),
         if (_isWalletDropdownOpen)
           Container(
-            height: 200,
-            margin: const EdgeInsets.only(top: 5),
+            height: 180,
+            margin: const EdgeInsets.only(top: 4),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.3),
                   spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: const Offset(0, 3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: _filteredWallets.isEmpty
-                ? const Center(child: Text('No wallets found'))
+                ? const Center(
+                    child: Text(
+                      'No wallets found',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  )
                 : Scrollbar(
                     child: ListView.builder(
                       shrinkWrap: true,
@@ -706,6 +717,7 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                           title: Text(
                             _capitalizeWords(wallet['wlt_name']!),
                             style: TextStyle(
+                              fontSize: 12,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               color: isSelected ? AppTheme.primaryColor : Colors.black87,
                             ),
@@ -714,13 +726,18 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                               ? const Icon(
                                   Icons.check_circle,
                                   color: AppTheme.primaryColor,
-                                  size: 20,
+                                  size: 16,
                                 )
                               : null,
                           onTap: () => _selectWallet(wallet),
                           tileColor: isSelected
                               ? AppTheme.primaryColor.withOpacity(0.1)
                               : null,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 2,
+                          ),
+                          dense: true,
                         );
                       },
                     ),
@@ -759,13 +776,16 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_isEditing ? 'EDIT RECEIPT' : 'NEW RECEIPT'),
+          title: Text(
+            _isEditing ? 'Edit Receipt' : 'New Receipt',
+            style: const TextStyle(fontSize: 18),
+          ),
           centerTitle: true,
           backgroundColor: AppTheme.primaryColor,
         ),
         body: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             child: Form(
               key: _formKey,
               child: Column(
@@ -773,7 +793,7 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                 children: [
                   // Customer Name with Dropdown
                   _buildCustomerDropdown(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Due Amount - show only if permission allows
                   if (receiptDueAmount == "yes")
@@ -782,11 +802,12 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                         TextFormField(
                           controller: _dueAmountController,
                           keyboardType: TextInputType.number,
+                          style: const TextStyle(fontSize: 12),
                           decoration: _inputDecoration('Due Amount'),
                           readOnly: true,
                           enabled: false,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                       ],
                     ),
 
@@ -797,15 +818,17 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                       decoration: _inputDecoration('Received Date'),
                       child: Text(
                         DateFormat('dd-MM-yyyy').format(_selectedDate),
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Received Amount
                   TextFormField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
+                    style: const TextStyle(fontSize: 12),
                     decoration: _inputDecoration('Received Amount'),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -824,27 +847,28 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Amount To (Wallet Dropdown)
                   _buildWalletDropdown(),
                   if (_paymentMethod == null)
                     const Padding(
-                      padding: EdgeInsets.only(top: 8.0),
+                      padding: EdgeInsets.only(top: 6.0),
                       child: Text(
                         'Please select an account',
-                        style: TextStyle(color: Colors.red, fontSize: 12),
+                        style: TextStyle(color: Colors.red, fontSize: 10),
                       ),
                     ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Notes 
                   TextFormField(
                     controller: _notesController,
+                    style: const TextStyle(fontSize: 12),
                     decoration: _inputDecoration('Notes'),
                     maxLines: 2,
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 24),
 
                   // Save Button
                 ElevatedButton(

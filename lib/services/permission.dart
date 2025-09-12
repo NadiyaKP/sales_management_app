@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 class PermissionResponse {
   final List<PermissionDetail> permissionDetails;
+
   PermissionResponse({
     required this.permissionDetails,
   });
+
   factory PermissionResponse.fromJson(Map<String, dynamic> json) {
     return PermissionResponse(
       permissionDetails: (json['permissiondet'] as List)
@@ -11,6 +15,7 @@ class PermissionResponse {
     );
   }
 }
+
 class PermissionDetail {
   final String invoiceView;
   final String creditNoteView;
@@ -74,6 +79,7 @@ class PermissionDetail {
   final String orderReport;
   final String salesExecutiveWiseOrder;
   final String salesExecutiveWiseFastestProduct;
+
   PermissionDetail({
     required this.invoiceView,
     required this.creditNoteView,
@@ -138,7 +144,7 @@ class PermissionDetail {
     required this.salesExecutiveWiseOrder,
     required this.salesExecutiveWiseFastestProduct,
   });
-  // Factory method to parse JSON into PermissionDetail object
+
   factory PermissionDetail.fromJson(Map<String, dynamic> json) {
     return PermissionDetail(
       invoiceView: json['invoice_view'] ?? '',
@@ -204,5 +210,101 @@ class PermissionDetail {
       salesExecutiveWiseOrder: json['sales_executive_wise_order'] ?? '',
       salesExecutiveWiseFastestProduct: json['sales_executive_wise_fastest_product'] ?? '',
     );
+  }
+
+  // Print all fields in a readable format
+  @override
+  String toString() {
+    return '''
+Invoice View: $invoiceView
+Credit Note View: $creditNoteView
+Receipt Add: $receiptAdd
+Receipt Due Amount: $receiptDueAmount
+Receipt Date Change: $receiptDateChange
+Receipt Edit: $receiptEdit
+Receipt View: $receiptView
+Receipt Delete: $receiptDelete
+Receipt Delete Reason: $receiptDeleteReason
+Receipt Whatsapp: $receiptWhatsapp
+Cheque Add: $chequeAdd
+Cheque View: $chequeView
+Cheque Edit: $chequeEdit
+Cheque Clear: $chequeClear
+Cheque Bounce: $chequeBounce
+Cheque Delete: $chequeDelete
+Cheque Delete Reason: $chequeDeleteReason
+Discount Add: $discountAdd
+Discount Due Amount: $discountDueAmount
+Discount Date Change: $discountDateChange
+Discount Allowed: $discountAllowed
+Discount Edit: $discountEdit
+Discount View: $discountView
+Discount Delete: $discountDelete
+Discount Delete Reason: $discountDeleteReason
+Stock View: $stockView
+Customer Add: $customerAdd
+Customer View: $customerView
+Customer Edit: $customerEdit
+Customer Status: $customerStatus
+Aged Receivable: $agedReceivable
+Sales Report: $salesReport
+Sales Detail: $salesDetail
+Sales Other: $salesOther
+Receipt Report: $receiptReport
+Sales Return Report: $salesReturnReport
+Sales Return Detail: $salesReturnDetail
+Discount Report: $discountReport
+All Report Excel: $allReportExcel
+Debitors: $debitors
+Debitors Whatsapp: $debitorsWhatsapp
+Debitors Excel: $debitorsExcel
+Day Book: $dayBook
+Customer Ledger: $customerLedger
+Ledger Excel: $ledgerExcel
+Account Sales: $accountSales
+Account Receipt: $accountReceipt
+Account Sales Return: $accountSalesReturn
+Account Discount: $accountDiscount
+Sales Executive Ledger: $salesExecutiveLedger
+Sales Executive Wise Sales: $salesExecutiveWiseSales
+Sales Executive Wise Collection: $salesExecutiveWiseCollection
+Sales Executive Wise Credit Note: $salesExecutiveWiseCreditNote
+Sales Executive Wise Discount: $salesExecutiveWiseDiscount
+Sales Executive Wise Excel: $salesExecutiveWiseExcel
+Order Add: $orderAdd
+Order Edit: $orderEdit
+Order View: $orderView
+Order Delete: $orderDelete
+Order Report: $orderReport
+Sales Executive Wise Order: $salesExecutiveWiseOrder
+Sales Executive Wise Fastest Product: $salesExecutiveWiseFastestProduct
+''';
+  }
+}
+
+// Example usage
+void main() {
+  // Sample JSON response (you can replace it with API response)
+  String response = '''
+  {
+    "permissiondet": [
+      {
+        "invoice_view": "1",
+        "creditnote_view": "1",
+        "receipt_add": "0",
+        "receipt_due_amount": "1",
+        "order_add": "1",
+        "order_view": "1",
+        "customer_add": "0"
+      }
+    ]
+  }
+  ''';
+
+  Map<String, dynamic> jsonData = json.decode(response);
+  PermissionResponse permissionResponse = PermissionResponse.fromJson(jsonData);
+
+  for (var detail in permissionResponse.permissionDetails) {
+    print(detail); // will call toString()
   }
 }

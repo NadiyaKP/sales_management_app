@@ -51,11 +51,11 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
   void initState() {
     super.initState();
     _loadPermissions();
-    loadCustomers(); // Load customers on init
+    loadCustomers(); 
   }
 
   Future<void> loadCustomers() async {
-    if (customersLoaded) return; // Avoid reloading if already loaded
+    if (customersLoaded) return; 
     
     try {
       List<Map<String, String>> customers = await apiServices.fetchCustomers();
@@ -146,12 +146,15 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
             return AlertDialog(
               title: Text(
                 'Enter Details - $selectedOption',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14, 
+                ),
                 textAlign: TextAlign.center,
               ),
               content: dialogLoading 
                 ? const SizedBox(
-                    height: 100,
+                    height: 80, 
                     child: Center(child: CircularProgressIndicator()),
                   )
                 : SingleChildScrollView(
@@ -173,7 +176,7 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
                           labelText: 'Customer Name',
                         ),
                         
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12), 
                         
                         InkWell(
                           onTap: () async {
@@ -201,7 +204,7 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), 
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.grey.shade400),
                               borderRadius: BorderRadius.circular(4),
@@ -211,15 +214,18 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
                               children: [
                                 Text(
                                   'From: ${fromDate.day}/${fromDate.month}/${fromDate.year}',
-                                  style: TextStyle(color: Colors.grey.shade700),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 12, 
+                                  ),
                                 ),
-                                const Icon(Icons.calendar_today, size: 18),
+                                const Icon(Icons.calendar_today, size: 16), 
                               ],
                             ),
                           ),
                         ),
                         
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12), 
                         
                         InkWell(
                           onTap: () async {
@@ -247,7 +253,7 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), 
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.grey.shade400),
                               borderRadius: BorderRadius.circular(4),
@@ -257,9 +263,12 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
                               children: [
                                 Text(
                                   'To: ${toDate.day}/${toDate.month}/${toDate.year}',
-                                  style: TextStyle(color: Colors.grey.shade700),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 12, 
+                                  ),
                                 ),
-                                const Icon(Icons.calendar_today, size: 18),
+                                const Icon(Icons.calendar_today, size: 16), 
                               ],
                             ),
                           ),
@@ -274,11 +283,14 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
                   },
                   child: Text(
                     'CANCEL',
-                    style: TextStyle(color: Colors.grey.shade700),
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 11, 
+                    ),
                   ),
                 ),
                 SizedBox(
-                  height: 32, // Reduced height
+                  height: 28, 
                   child: ElevatedButton(
                     onPressed: dialogLoading ? null : () {
                       if (selectedCustomer != null && selectedCustId != null) {
@@ -295,13 +307,13 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // Reduced padding
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2), 
                     ),
                     child: const Text(
                       'SUBMIT',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12, // Reduced font size
+                        fontSize: 10, 
                       ),
                     ),
                   ),
@@ -433,7 +445,7 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  childAspectRatio: 1.0, // Changed from 0.85 to 1.0 to match home_page.dart
+                  childAspectRatio: 1.0, 
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),
@@ -560,7 +572,7 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
             elevation: 4.0,
             borderRadius: BorderRadius.circular(4),
             child: Container(
-              constraints: const BoxConstraints(maxHeight: 200),
+              constraints: const BoxConstraints(maxHeight: 160), 
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(4),
@@ -568,10 +580,13 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
               ),
               child: _filteredItems.isEmpty
                   ? const Padding(
-                      padding: EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(12.0), 
                       child: Text(
                         'No customers found',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12, 
+                        ),
                       ),
                     )
                   : ListView.builder(
@@ -589,8 +604,8 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                              horizontal: 12, 
+                              vertical: 8,    
                             ),
                             decoration: BoxDecoration(
                               border: index < _filteredItems.length - 1
@@ -604,7 +619,7 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
                             ),
                             child: Text(
                               item,
-                              style: const TextStyle(fontSize: 14),
+                              style: const TextStyle(fontSize: 12), 
                             ),
                           ),
                         );
@@ -638,17 +653,21 @@ class _SearchableDropdownState extends State<SearchableDropdown> {
           child: TextFormField(
             controller: _searchController,
             focusNode: _focusNode,
+            style: const TextStyle(fontSize: 12), 
             decoration: InputDecoration(
               labelText: widget.labelText,
+              labelStyle: const TextStyle(fontSize: 11), 
               hintText: widget.hintText,
+              hintStyle: const TextStyle(fontSize: 11), 
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
+                horizontal: 10, 
+                vertical: 8,    
               ),
               suffixIcon: Icon(
                 _isDropdownOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                 color: Colors.grey.shade600,
+                size: 16, 
               ),
             ),
             onChanged: (value) {

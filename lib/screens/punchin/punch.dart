@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:image/image.dart' as img;
 import 'punchin_details.dart';
+import '../../theme/app_theme.dart';
 
 List<CameraDescription> cameras = [];
 CameraController? _cameraController;
@@ -24,6 +25,8 @@ class CameraPageScreen extends StatefulWidget {
 class _CameraPageScreenState extends State<CameraPageScreen> {
   bool _isCameraInitialized = false;
   bool isLoading = false;
+  bool _locationPermissionGranted = false;
+  bool _locationServiceEnabled = false;
   List<String> customerNames = [];
   List<String> filteredCustomerNames = [];
   String? selectedCustomer;
@@ -38,7 +41,7 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _keyboardVisible = false;
 
-  static const Color primaryColor = Color(0xFF1976D2);
+  static const Color primaryColor = AppTheme.primaryColor;
 
   @override
   void initState() {
@@ -47,6 +50,106 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
     _customerFocusNode.addListener(_onCustomerFocusChange);
     fetchCustomers();
     _initializeCamera();
+    _checkLocationStatus();
+  }
+
+  Future<void> _checkLocationStatus() async {
+    try {
+      // Check if location service is enabled
+      _locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      
+      setState(() {
+        _locationPermissionGranted = permission == LocationPermission.always || 
+                                    permission == LocationPermission.whileInUse;
+      });
+      
+      if (!_locationServiceEnabled || !_locationPermissionGranted) {
+        await _requestLocationPermission();
+      }
+    } catch (e) {
+      debugPrint("Error checking location status: $e");
+    }
+  }
+
+  Future<void> _requestLocationPermission() async {
+    try {
+      // Request permission
+      LocationPermission permission = await Geolocator.requestPermission();
+      
+      // Check if service is enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      
+      setState(() {
+        _locationPermissionGranted = permission == LocationPermission.always || 
+                                    permission == LocationPermission.whileInUse;
+        _locationServiceEnabled = serviceEnabled;
+      });
+      
+      if (!_locationPermissionGranted) {
+        _showLocationPermissionDialog();
+      } else if (!_locationServiceEnabled) {
+        _showLocationServiceDialog();
+      }
+    } catch (e) {
+      debugPrint("Error requesting location permission: $e");
+    }
+  }
+
+  void _showLocationPermissionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Location Permission Required'),
+        content: const Text(
+          'Punch-in feature requires location permission to track your attendance. '
+          'Please grant location permission in app settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Geolocator.openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLocationServiceDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Location Service Disabled'),
+        content: const Text(
+          'Punch-in feature requires location services to be enabled. '
+          'Please enable location services on your device.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Geolocator.openLocationSettings();
+            },
+            child: const Text('Enable Location'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -174,6 +277,14 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
   }
 
   Future<void> _takePicture() async {
+    if (!_locationPermissionGranted || !_locationServiceEnabled) {
+      await _requestLocationPermission();
+      if (!_locationPermissionGranted || !_locationServiceEnabled) {
+        _showError("Location permission and service are required for punch-in");
+        return;
+      }
+    }
+
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
       _showError("Camera is not ready");
       return;
@@ -189,9 +300,44 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
       return;
     }
 
+    if (_noteController.text.trim().isEmpty) {
+      _showError("Note is required");
+      return;
+    }
+
     String custId = selectedCustId ?? customerIdMap[selectedCustomer] ?? '';
     if (custId.isEmpty) {
       _showError("Customer ID not found");
+      return;
+    }
+
+    // Show location access confirmation dialog
+    bool? confirmLocationAccess = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Location Access'),
+          content: const Text(
+            'Your current location will be accessed for this punch-in. '
+            'Do you want to allow location access?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Dismiss'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Allow'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If user dismissed the dialog or clicked "Dismiss", stop here
+    if (confirmLocationAccess != true) {
       return;
     }
 
@@ -202,7 +348,7 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
     try {
       // Take picture first
       final image = await _cameraController!.takePicture();
-      File convertedImage = await _convertToSupportedFormat(File(image.path));
+      File convertedImage = await _convertToJpgFormat(File(image.path));
 
       // Get location with better error handling
       final locationService = LocationService();
@@ -238,7 +384,7 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
               isLoading = true;
             });
           } else {
-            return; // User chose not to continue
+            return; // User choose not to continue
           }
         } else {
           return;
@@ -306,22 +452,28 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
     );
   }
 
-  Future<File> _convertToSupportedFormat(File imageFile) async {
+  Future<File> _convertToJpgFormat(File imageFile) async {
     try {
+      // Read the original file
       Uint8List imageBytes = await imageFile.readAsBytes();
-      img.Image? originalImage = img.decodeImage(imageBytes);
-      if (originalImage == null) {
-        throw Exception("Failed to decode image");
+      
+      // Create a new file with .jpg extension
+      String tempPath = '${imageFile.parent.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      File jpgFile = File(tempPath);
+      
+      // Write the bytes to the new file
+      await jpgFile.writeAsBytes(imageBytes);
+      
+      // Delete the original file if it's not already a jpg
+      if (!imageFile.path.toLowerCase().endsWith('.jpg') && 
+          !imageFile.path.toLowerCase().endsWith('.jpeg')) {
+        await imageFile.delete();
       }
       
-      String tempPath = '${imageFile.path}.jpg';
-      File convertedFile = File(tempPath);
-      
-      List<int> jpegBytes = img.encodeJpg(originalImage, quality: 85);
-      await convertedFile.writeAsBytes(jpegBytes);
-      
-      return convertedFile;
+      return jpgFile;
     } catch (e) {
+      debugPrint("Error converting to JPG: $e");
+      // If conversion fails, return the original file
       return imageFile;
     }
   }
@@ -432,7 +584,8 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
 
   bool get _isFormComplete {
     return selectedCustomer != null && 
-           _locationController.text.trim().isNotEmpty;
+           _locationController.text.trim().isNotEmpty &&
+           _noteController.text.trim().isNotEmpty;
   }
 
   @override
@@ -449,7 +602,7 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text(
-          'PUNCH IN',
+          'Punch-In',
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: primaryColor,
@@ -457,7 +610,7 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Form fields section (scrollable)
+            // Form fields section
             Expanded(
               child: SingleChildScrollView(
                 controller: _scrollController,
@@ -465,6 +618,43 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (!_locationPermissionGranted || !_locationServiceEnabled)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning, color: Colors.orange[800]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _locationPermissionGranted 
+                                    ? 'Please enable location services'
+                                    : 'Location permission required for punch-in',
+                                style: TextStyle(
+                                  color: Colors.orange[800],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _requestLocationPermission,
+                              child: Text(
+                                'Enable',
+                                style: TextStyle(
+                                  color: Colors.orange[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     _buildCustomerField(),
                     const SizedBox(height: 12),
                     TextField(
@@ -478,15 +668,15 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
                       textInputAction: TextInputAction.next,
                       onTap: _scrollToField,
                       onChanged: (value) {
-                        setState(() {}); // Trigger rebuild to update camera preview size
+                        setState(() {}); 
                       },
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _noteController,
                       decoration: const InputDecoration(
-                        labelText: 'Note (Optional)',
-                        hintText: 'Enter any additional notes...',
+                        labelText: 'Note *',
+                        hintText: 'Enter your notes...',
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
@@ -505,8 +695,8 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               height: _isFormComplete && !_keyboardVisible
-                  ? MediaQuery.of(context).size.height * 0.4  // Larger when form is complete
-                  : MediaQuery.of(context).size.height * 0.2, // Smaller when form is incomplete
+                  ? MediaQuery.of(context).size.height * 0.4 
+                  : MediaQuery.of(context).size.height * 0.2, 
               margin: const EdgeInsets.symmetric(horizontal: 16.0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8.0),
@@ -538,13 +728,19 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: _isFormComplete ? _takePicture : null,
+                      onPressed: _isFormComplete && _locationPermissionGranted && _locationServiceEnabled 
+                          ? _takePicture 
+                          : null,
                       child: Text(
-                        _isFormComplete 
-                            ? "Take Picture"
-                            : selectedCustomer == null
-                                ? "Select Customer First"
-                                : "Enter Location",
+                        !_locationPermissionGranted || !_locationServiceEnabled
+                            ? "Enable Location First"
+                            : _isFormComplete 
+                                ? "Take Picture"
+                                : selectedCustomer == null
+                                    ? "Select Customer First"
+                                    : _locationController.text.isEmpty
+                                        ? "Enter Location"
+                                        : "Enter Note",
                         style: const TextStyle(fontSize: 16),
                       ),
                     ),
@@ -593,54 +789,46 @@ class LocationService {
 
   Future<Position> getCurrentLocation() async {
     try {
-      await checkPermission(); // This will throw if permissions are not granted
+      await checkPermission(); 
       
-      // Try to get last known position first (faster)
       Position? lastPosition;
       try {
         lastPosition = await Geolocator.getLastKnownPosition(
           forceAndroidLocationManager: false,
         );
       } catch (e) {
-        // Ignore error and continue with current position
+        // Ignore error
       }
       
-      // If last known position is recent (within 5 minutes), use it
       if (lastPosition != null && 
           DateTime.now().difference(lastPosition.timestamp).inMinutes < 5) {
         return lastPosition;
       }
       
-      // Otherwise, get current position with multiple fallback strategies
       Position position;
       
       try {
-        // First attempt: High accuracy with longer timeout
         position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 30),
         );
       } catch (e) {
         try {
-          // Second attempt: Medium accuracy with shorter timeout
           position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.medium,
             timeLimit: const Duration(seconds: 20),
           );
         } catch (e) {
           try {
-            // Third attempt: Low accuracy with short timeout
             position = await Geolocator.getCurrentPosition(
               desiredAccuracy: LocationAccuracy.low,
               timeLimit: const Duration(seconds: 10),
             );
           } catch (e) {
-            // Final fallback: Use last known position if available
             if (lastPosition != null) {
               return lastPosition;
             }
             
-            // If all attempts fail, throw a more descriptive error
             throw Exception(
               "Unable to get location. Please check if:\n"
               "• Location services are enabled\n"
@@ -688,8 +876,31 @@ class _LocationPageState extends State<LocationPage> {
   Future<String> _convertImageToBase64() async {
     try {
       File imageFile = File(widget.imageFile.path);
+      
+      // Ensure the file is a JPEG by checking extension
+      if (!widget.imageFile.path.toLowerCase().endsWith('.jpg') && 
+          !widget.imageFile.path.toLowerCase().endsWith('.jpeg')) {
+        // Convert to JPEG if it's not already
+        String tempPath = '${imageFile.parent.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+        File jpgFile = File(tempPath);
+        await jpgFile.writeAsBytes(await imageFile.readAsBytes());
+        imageFile = jpgFile;
+      }
+      
       Uint8List imageBytes = await imageFile.readAsBytes();
-      return "data:image/jpeg;base64,${base64Encode(imageBytes)}";
+      String base64String = base64Encode(imageBytes);
+      
+      // Format the base64 string as a data URI with content type
+      String formattedBase64 = "data:image/jpeg;base64,$base64String";
+      
+      debugPrint("=== COMPLETE BASE64 IMAGE DATA ===");
+      debugPrint("Image file path: ${imageFile.path}");
+      debugPrint("Image size: ${imageBytes.length} bytes");
+      debugPrint("Base64 length: ${formattedBase64.length} characters");
+      debugPrint("Base64 data: $formattedBase64");
+      debugPrint("=== END BASE64 IMAGE DATA ===");
+      
+      return formattedBase64;
     } catch (e) {
       rethrow;
     }
@@ -704,6 +915,9 @@ class _LocationPageState extends State<LocationPage> {
 
     try {
       String base64Image = await _convertImageToBase64();
+      debugPrint("=== BASE64 IN API REQUEST ===");
+      debugPrint("Base64 image data for API: $base64Image");
+      debugPrint("=== END BASE64 IN API REQUEST ===");
       
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? url = prefs.getString('url');
@@ -718,7 +932,7 @@ class _LocationPageState extends State<LocationPage> {
         "unid": unid,
         "slex": slex,
         "customer_name": widget.customerName,
-        "cust_id": widget.customerId,
+        "custid": widget.customerId, 
         "action": "insert",
         "location": widget.location,
         "longt": widget.position.longitude.toString(),
@@ -726,6 +940,18 @@ class _LocationPageState extends State<LocationPage> {
         "notes": widget.note,
         "image_data": base64Image,
       };
+      
+      // Debug: Print API endpoint
+      debugPrint("=== PUNCH-IN API REQUEST ===");
+      debugPrint("Endpoint: $url/action/punch-in.php");
+      debugPrint("Method: POST");
+      debugPrint("Headers: Content-Type: application/json");
+      
+      // Debug: Print request body (excluding image data for readability)
+      Map<String, dynamic> debugRequestBody = Map.from(requestBody);
+      debugRequestBody['image_data'] = '[BASE64_IMAGE_DATA - ${base64Image.length} characters]';
+      debugPrint("Request Body: ${jsonEncode(debugRequestBody)}");
+      debugPrint("=============================");
       
       final response = await http.post(
         Uri.parse('$url/action/punch-in.php'),
@@ -740,12 +966,29 @@ class _LocationPageState extends State<LocationPage> {
         },
       );
       
+      // Debug: Print API response
+      debugPrint("=== PUNCH-IN API RESPONSE ===");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Response Headers: ${response.headers}");
+      debugPrint("Response Body: ${response.body}");
+      debugPrint("==============================");
+      
       if (response.statusCode == 200) {
         if (response.body.isEmpty) {
           throw Exception('Server returned empty response');
         }
         
-        Map<String, dynamic> responseData = json.decode(response.body);
+        Map<String, dynamic> responseData;
+        try {
+          responseData = json.decode(response.body);
+        } catch (e) {
+          throw Exception('Invalid JSON response from server');
+        }
+        
+        // Debug: Print parsed response data
+        debugPrint("=== PARSED RESPONSE DATA ===");
+        debugPrint("Parsed JSON: ${jsonEncode(responseData)}");
+        debugPrint("=============================");
         
         bool isSuccess = false;
         String message = '';
@@ -761,6 +1004,11 @@ class _LocationPageState extends State<LocationPage> {
           message = responseData['message'] ?? '';
         }
         
+        debugPrint("=== RESPONSE PROCESSING ===");
+        debugPrint("Success: $isSuccess");
+        debugPrint("Message: $message");
+        debugPrint("============================");
+        
         if (isSuccess) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -770,13 +1018,10 @@ class _LocationPageState extends State<LocationPage> {
               ),
             );
             
-           
-            
-            // Alternative approach if you prefer using pushReplacement and clearing the stack:
-             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => PunchInDetailsPage()), // Replace with your actual page
-             (Route<dynamic> route) => false,
-           );
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => PunchInDetailsPage()), 
+              (Route<dynamic> route) => false,
+            );
           }
         } else {
           throw Exception(message.isNotEmpty ? message : 'Failed to save punch-in details');
@@ -785,6 +1030,11 @@ class _LocationPageState extends State<LocationPage> {
         throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
+      // Debug: Print error information
+      debugPrint("=== PUNCH-IN API ERROR ===");
+      debugPrint("Error: ${e.toString()}");
+      debugPrint("===========================");
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -810,7 +1060,7 @@ class _LocationPageState extends State<LocationPage> {
           'Location & Details',
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: primaryColor,
+        backgroundColor: AppTheme.primaryColor,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -912,6 +1162,35 @@ class _LocationPageState extends State<LocationPage> {
                   ),
                 ),
                 
+                const SizedBox(height: 16),
+                
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Notes:",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.note,
+                          style: const TextStyle(
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
                 const SizedBox(height: 20),
                 
                 SizedBox(
@@ -942,8 +1221,6 @@ class _LocationPageState extends State<LocationPage> {
                               ),
                             ],
                           )
-                        
-                            
                         : const Text(
                             "Save",
                             style: TextStyle(fontSize: 16),

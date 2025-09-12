@@ -86,7 +86,7 @@ class DayBookPage extends StatefulWidget {
 }
 
 class _DayBookPageState extends State<DayBookPage> {
-  int _selectedIndex = 1; // Report tab is selected
+  int _selectedIndex = 1; 
   DateTime _selectedDate = DateTime.now();
   String _totalDebit = '0.00';
   String _totalCredit = '0.00';
@@ -106,6 +106,12 @@ class _DayBookPageState extends State<DayBookPage> {
     _fetchDayBookData(_selectedDate);
   }
 
+  String _formatDateForAPI(DateTime date) {
+    // Try multiple formats to ensure compatibility
+    // Common formats: dd-MM-yyyy, dd/MM/yyyy, yyyy-MM-dd
+    return DateFormat('dd-MM-yyyy').format(date);
+  }
+
   Future<void> _fetchDayBookData(DateTime date) async {
     if (!mounted) return;
     
@@ -113,61 +119,109 @@ class _DayBookPageState extends State<DayBookPage> {
       _isLoading = true;
     });
 
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? url = prefs.getString('url');
-    String? unid = prefs.getString('unid');
-    String? slex = prefs.getString('slex');
-
-    // Format date for API
-    String formattedDate = DateFormat('yyyy-MM-dd').format(date);
-
     try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? url = prefs.getString('url');
+      String? unid = prefs.getString('unid');
+      String? slex = prefs.getString('slex');
+
+      // Validate required parameters
+      if (url == null || url.isEmpty) {
+        _showError('Server URL not configured');
+        return;
+      }
+      
+      if (unid == null || unid.isEmpty) {
+        _showError('User ID not found');
+        return;
+      }
+
+      if (slex == null || slex.isEmpty) {
+        _showError('Session not found');
+        return;
+      }
+
+      // Format date for API - try dd-MM-yyyy format first
+      String formattedDate = _formatDateForAPI(date);
+      
+      debugPrint('API Request - URL: $url/day-book.php');
+      debugPrint('API Request - Date: $formattedDate');
+      debugPrint('API Request - UNID: $unid');
+
+      final requestBody = {
+        "unid": unid,
+        "slex": slex,
+        "from_date": formattedDate,
+      };
+
+      debugPrint('API Request Body: ${jsonEncode(requestBody)}');
+
       final response = await http.post(
         Uri.parse('$url/day-book.php'),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: jsonEncode({
-          "unid": unid,
-          "slex": slex,
-          "from_date": formattedDate,
-        }),
+        body: jsonEncode(requestBody),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout. Please check your connection.');
+        },
       );
+
+      debugPrint('API Response Status: ${response.statusCode}');
+      debugPrint('API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
         if (data['result'] == "1") {
           final List<dynamic> invoiceDayBook = data['invoicedet'] ?? [];
           final List<dynamic> creditDayBook = data['creditnotedet'] ?? [];
           final List<dynamic> discountDayBook = data['discountdet'] ?? [];
 
-          setState(() {
-            _totalDebit = data['ttl_debit_amt'] ?? '0.00';
-            _totalCredit = data['ttl_credit_amt'] ?? '0.00';
-            _mainTitle = data['hdr_name'] ?? '';
-            
-            _invoiceTransactions = invoiceDayBook
-                .map((json) => DayBookInvoice.fromJson(json))
-                .toList();
-            _creditTransactions = creditDayBook
-                .map((json) => DayBookCredit.fromJson(json))
-                .toList();
-            _discountTransactions = discountDayBook
-                .map((json) => DayBookDiscount.fromJson(json))
-                .toList();
-          });
+          if (mounted) {
+            setState(() {
+              _totalDebit = data['ttl_debit_amt']?.toString() ?? '0.00';
+              _totalCredit = data['ttl_credit_amt']?.toString() ?? '0.00';
+              _mainTitle = data['hdr_name']?.toString() ?? '';
+              
+              _invoiceTransactions = invoiceDayBook
+                  .map((json) => DayBookInvoice.fromJson(json))
+                  .toList();
+              _creditTransactions = creditDayBook
+                  .map((json) => DayBookCredit.fromJson(json))
+                  .toList();
+              _discountTransactions = discountDayBook
+                  .map((json) => DayBookDiscount.fromJson(json))
+                  .toList();
+            });
+          }
 
           if (invoiceDayBook.isEmpty && creditDayBook.isEmpty && discountDayBook.isEmpty) {
-            _showError('No report data found');
+            _showError('No transactions found for the selected date');
           }
         } else {
-          _showError(data['message'] ?? 'Failed to fetch report.');
+          // If the current format fails, try alternative formats
+          if (data['message']?.toString().toLowerCase().contains('invalid date') ?? false) {
+            await _tryAlternativeDateFormats(date, url, unid, slex);
+          } else {
+            _showError(data['message']?.toString() ?? 'Failed to fetch day book data.');
+          }
         }
       } else {
-        _showError('Error: ${response.statusCode}');
+        _showError('Server error: ${response.statusCode}. Please try again.');
       }
     } catch (error) {
-      _showError('An error occurred: $error');
+      debugPrint('Error in _fetchDayBookData: $error');
+      if (error.toString().contains('timeout')) {
+        _showError('Request timeout. Please check your internet connection.');
+      } else if (error.toString().contains('SocketException')) {
+        _showError('Network error. Please check your internet connection.');
+      } else {
+        _showError('An error occurred: ${error.toString()}');
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -175,6 +229,73 @@ class _DayBookPageState extends State<DayBookPage> {
         });
       }
     }
+  }
+
+  Future<void> _tryAlternativeDateFormats(DateTime date, String url, String unid, String slex) async {
+    // List of alternative date formats to try
+    final List<String> dateFormats = [
+      'yyyy-MM-dd',    // ISO format
+      'dd/MM/yyyy',    // Common format
+      'MM-dd-yyyy',    // US format
+      'yyyy/MM/dd',    // Alternative ISO
+    ];
+
+    for (String format in dateFormats) {
+      try {
+        String alternativeDate = DateFormat(format).format(date);
+        debugPrint('Trying alternative date format: $alternativeDate');
+
+        final response = await http.post(
+          Uri.parse('$url/day-book.php'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            "unid": unid,
+            "slex": slex,
+            "from_date": alternativeDate,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          
+          if (data['result'] == "1") {
+            final List<dynamic> invoiceDayBook = data['invoicedet'] ?? [];
+            final List<dynamic> creditDayBook = data['creditnotedet'] ?? [];
+            final List<dynamic> discountDayBook = data['discountdet'] ?? [];
+
+            if (mounted) {
+              setState(() {
+                _totalDebit = data['ttl_debit_amt']?.toString() ?? '0.00';
+                _totalCredit = data['ttl_credit_amt']?.toString() ?? '0.00';
+                _mainTitle = data['hdr_name']?.toString() ?? '';
+                
+                _invoiceTransactions = invoiceDayBook
+                    .map((json) => DayBookInvoice.fromJson(json))
+                    .toList();
+                _creditTransactions = creditDayBook
+                    .map((json) => DayBookCredit.fromJson(json))
+                    .toList();
+                _discountTransactions = discountDayBook
+                    .map((json) => DayBookDiscount.fromJson(json))
+                    .toList();
+              });
+            }
+
+            debugPrint('Success with date format: $format');
+            return; // Exit if successful
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed with format $format: $e');
+        continue;
+      }
+    }
+
+    // If all formats fail
+    _showError('Unable to fetch data. Please contact support.');
   }
 
   Future<PermissionResponse> _fetchPermissions() async {
@@ -221,6 +342,7 @@ class _DayBookPageState extends State<DayBookPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
       backgroundColor: Colors.red,
+      duration: const Duration(seconds: 4),
     ));
   }
 
@@ -260,12 +382,13 @@ class _DayBookPageState extends State<DayBookPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM, yyyy');
+    
+    final dateFormat = DateFormat('dd/MM/yyyy');
     final formattedDate = dateFormat.format(_selectedDate);
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DAY BOOK'),
+        title: const Text('Day Book'),
         centerTitle: true,
       ),
       body: Container(
@@ -274,13 +397,13 @@ class _DayBookPageState extends State<DayBookPage> {
           children: [
             // Date Selection Card
             Card(
-              margin: const EdgeInsets.all(16.0),
+              margin: const EdgeInsets.all(12.0),
               elevation: 2.0,
               child: InkWell(
                 onTap: () => _selectDate(context),
                 borderRadius: BorderRadius.circular(4.0),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(12.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -290,15 +413,15 @@ class _DayBookPageState extends State<DayBookPage> {
                           const Text(
                             'Selected Date',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 11,
                               color: Colors.grey,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             formattedDate,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -307,6 +430,7 @@ class _DayBookPageState extends State<DayBookPage> {
                       const Icon(
                         Icons.calendar_today,
                         color: AppTheme.primaryColor,
+                        size: 20,
                       ),
                     ],
                   ),
@@ -317,22 +441,22 @@ class _DayBookPageState extends State<DayBookPage> {
             // Main Title
             if (_mainTitle.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
                 child: Text(
                   _mainTitle,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    fontSize: 10,
                   ),
                 ),
               ),
             
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             
             // Totals Cards
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: Row(
                 children: [
                   // Total Debit Card
@@ -340,22 +464,22 @@ class _DayBookPageState extends State<DayBookPage> {
                     child: Card(
                       elevation: 2.0,
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(12.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
                               'Total Debit',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.grey,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             Text(
                               _totalDebit.isNotEmpty ? _totalDebit : "No Data",
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -364,28 +488,28 @@ class _DayBookPageState extends State<DayBookPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   // Total Credit Card
                   Expanded(
                     child: Card(
                       elevation: 2.0,
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(12.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
                               'Total Credit',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.grey,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             Text(
                               _totalCredit.isNotEmpty ? _totalCredit : "No Data",
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -398,19 +522,19 @@ class _DayBookPageState extends State<DayBookPage> {
               ),
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             
             // Transactions List Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: Row(
                 children: [
-                  const Icon(Icons.receipt, color: Colors.grey),
-                  const SizedBox(width: 8),
+                  const Icon(Icons.receipt, color: Colors.grey, size: 18),
+                  const SizedBox(width: 6),
                   Text(
                     '$formattedDate Day Book',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -418,7 +542,7 @@ class _DayBookPageState extends State<DayBookPage> {
               ),
             ),
             
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             
             // Transactions List
             Expanded(
@@ -431,14 +555,14 @@ class _DayBookPageState extends State<DayBookPage> {
                         children: [
                           Icon(
                             Icons.info_outline,
-                            size: 48,
+                            size: 40,
                             color: Colors.grey,
                           ),
-                          SizedBox(height: 16),
+                          SizedBox(height: 12),
                           Text(
                             'No data available for the selected date.',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 12,
                               color: Colors.grey,
                             ),
                             textAlign: TextAlign.center,
@@ -447,7 +571,7 @@ class _DayBookPageState extends State<DayBookPage> {
                       ),
                     )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         children: [
                           // Invoice Transactions
@@ -490,25 +614,26 @@ class _DayBookPageState extends State<DayBookPage> {
   Widget _buildInvoiceCard(DayBookInvoice invoice) {
     return Card(
       elevation: 1.0,
-      margin: const EdgeInsets.only(bottom: 8.0),
+      margin: const EdgeInsets.only(bottom: 6.0),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
             // Transaction icon
             Container(
-              width: 40,
-              height: 40,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: const Icon(
                 Icons.receipt,
                 color: Colors.blue,
+                size: 18,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             // Transaction details
             Expanded(
               child: Column(
@@ -526,17 +651,17 @@ class _DayBookPageState extends State<DayBookPage> {
                     child: Text(
                       'Invoice No: ${invoice.invoiceNo}',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: Colors.blue,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     'ID: ${invoice.invId}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -551,7 +676,7 @@ class _DayBookPageState extends State<DayBookPage> {
                   Text(
                     invoice.debit,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
@@ -560,7 +685,7 @@ class _DayBookPageState extends State<DayBookPage> {
                   Text(
                     invoice.credit,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: Colors.teal,
                     ),
@@ -576,25 +701,26 @@ class _DayBookPageState extends State<DayBookPage> {
   Widget _buildCreditCard(DayBookCredit credit) {
     return Card(
       elevation: 1.0,
-      margin: const EdgeInsets.only(bottom: 8.0),
+      margin: const EdgeInsets.only(bottom: 6.0),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
             // Transaction icon
             Container(
-              width: 40,
-              height: 40,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: const Icon(
                 Icons.credit_card,
                 color: Colors.orange,
+                size: 18,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             // Transaction details
             Expanded(
               child: Column(
@@ -603,15 +729,15 @@ class _DayBookPageState extends State<DayBookPage> {
                   Text(
                     'Credit Note: ${credit.creditNo}',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     'ID: ${credit.crdId}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -626,7 +752,7 @@ class _DayBookPageState extends State<DayBookPage> {
                   Text(
                     credit.debit,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: Colors.red,
                     ),
@@ -635,7 +761,7 @@ class _DayBookPageState extends State<DayBookPage> {
                   Text(
                     credit.credit,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
@@ -651,25 +777,26 @@ class _DayBookPageState extends State<DayBookPage> {
   Widget _buildDiscountCard(DayBookDiscount discount) {
     return Card(
       elevation: 1.0,
-      margin: const EdgeInsets.only(bottom: 8.0),
+      margin: const EdgeInsets.only(bottom: 6.0),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
             // Transaction icon
             Container(
-              width: 40,
-              height: 40,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: Colors.purple.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: const Icon(
                 Icons.discount,
                 color: Colors.purple,
+                size: 18,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             // Transaction details
             Expanded(
               child: Column(
@@ -678,15 +805,15 @@ class _DayBookPageState extends State<DayBookPage> {
                   Text(
                     'Discount: ${discount.customerName}',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     'Customer Discount',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -701,7 +828,7 @@ class _DayBookPageState extends State<DayBookPage> {
                   Text(
                     discount.debit,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: Colors.red,
                     ),
@@ -710,7 +837,7 @@ class _DayBookPageState extends State<DayBookPage> {
                   Text(
                     discount.credit,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),

@@ -191,10 +191,10 @@ class _ChequesPageState extends State<ChequesPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['result'] == "1") {
-          chequesTotal = data['ttlcheques'];
+          // FIX: Convert string to int for ttlcheques
+          chequesTotal = int.tryParse(data['ttlcheques']?.toString() ?? '0') ?? 0;
           final List<dynamic> chequesList = data['chequedet'] ?? [];
           setState(() {
-            chequesTotal = chequesTotal;
             _cheques = chequesList.map((json) => Cheque.fromJson(json)).toList();
             filteredCheques = _cheques;
           });
@@ -412,10 +412,8 @@ class _ChequesPageState extends State<ChequesPage> {
   }
 
   void _showClearedChequeDialog(Cheque cheque) {
-    // Reset dialog state
-    _notesController.text = "Cleared Check No ${cheque.chequeNo}";
+    _notesController.text = "Cleared Cheque no ${cheque.chequeNo}";
     
-    // Set initial wallet selection if available
     if (wallets.isNotEmpty) {
       selectedWallet = wallets.first['wlt_name'];
       selectedWalletId = wallets.first['wltid'];
@@ -440,7 +438,7 @@ class _ChequesPageState extends State<ChequesPage> {
             return Dialog(
               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
               child: Container(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(10),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -449,24 +447,24 @@ class _ChequesPageState extends State<ChequesPage> {
                       Container(
                         width: double.infinity,
                         color: Colors.green,
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(6),
                         child: const Center(
                           child: Text(
                             'Cleared Cheque',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       Text(
-                        'Check No: ${cheque.chequeNo}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        'Cheque No: ${cheque.chequeNo}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       GestureDetector(
                         onTap: () {
                           _selectDate(context, _receivedDateController);
@@ -474,24 +472,29 @@ class _ChequesPageState extends State<ChequesPage> {
                         child: AbsorbPointer(
                           child: TextField(
                             controller: _receivedDateController,
+                            style: const TextStyle(fontSize: 12),
                             decoration: const InputDecoration(
                               labelText: 'Received Date',
+                              labelStyle: TextStyle(fontSize: 12),
                               border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: _receivedAmountController,
+                        style: const TextStyle(fontSize: 12),
                         decoration: const InputDecoration(
                           labelText: 'Received Amount',
+                          labelStyle: TextStyle(fontSize: 12),
                           border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         ),
                         keyboardType: TextInputType.number,
                       ),
-                      const SizedBox(height: 16),
-                      // Wallet dropdown
+                      const SizedBox(height: 8),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -504,15 +507,19 @@ class _ChequesPageState extends State<ChequesPage> {
                             child: InputDecorator(
                               decoration: InputDecoration(
                                 labelText: 'Amount To',
+                                labelStyle: const TextStyle(fontSize: 12),
                                 border: const OutlineInputBorder(),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                                 suffixIcon: Icon(
                                   _isWalletDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                                   color: AppTheme.primaryColor,
+                                  size: 16,
                                 ),
                               ),
                               child: Text(
                                 selectedWallet ?? 'Select wallet',
                                 style: TextStyle(
+                                  fontSize: 12,
                                   color: selectedWallet != null ? Colors.black : Colors.grey[600],
                                 ),
                               ),
@@ -520,29 +527,39 @@ class _ChequesPageState extends State<ChequesPage> {
                           ),
                           if (_isWalletDropdownOpen)
                             Container(
-                              height: 200,
-                              margin: const EdgeInsets.only(top: 5),
+                              height: 100,
+                              margin: const EdgeInsets.only(top: 2),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(6),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.grey.withOpacity(0.3),
                                     spreadRadius: 1,
-                                    blurRadius: 5,
-                                    offset: const Offset(0, 3),
+                                    blurRadius: 3,
+                                    offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: wallets.isEmpty
-                                  ? const Center(child: Text('No wallets found'))
+                                  ? const Center(
+                                      child: Text(
+                                        'No wallets found',
+                                        style: TextStyle(fontSize: 10),
+                                      ),
+                                    )
                                   : ListView.builder(
                                       itemCount: wallets.length,
                                       itemBuilder: (context, index) {
                                         final wallet = wallets[index];
                                         return ListTile(
-                                          title: Text(wallet['wlt_name'] ?? ''),
+                                          dense: true,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                                          title: Text(
+                                            wallet['wlt_name'] ?? '',
+                                            style: const TextStyle(fontSize: 10),
+                                          ),
                                           onTap: () {
                                             setDialogState(() {
                                               selectedWallet = wallet['wlt_name'];
@@ -559,15 +576,20 @@ class _ChequesPageState extends State<ChequesPage> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      const Text('Notes'),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Notes',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       TextField(
                         controller: _notesController,
+                        style: const TextStyle(fontSize: 12),
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -575,16 +597,16 @@ class _ChequesPageState extends State<ChequesPage> {
                             onPressed: () => Navigator.pop(context),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               minimumSize: Size.zero,
                               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                             ),
                             child: const Text(
                               'Cancel',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: Colors.white, fontSize: 12),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           ElevatedButton(
                             onPressed: () async {
                               if (selectedWallet == null || selectedWalletId == null) {
@@ -619,13 +641,13 @@ class _ChequesPageState extends State<ChequesPage> {
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF022E44),
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               minimumSize: Size.zero,
                               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                             ),
                             child: const Text(
                               'Save',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: Colors.white, fontSize: 12),
                             ),
                           ),
                         ],
@@ -642,7 +664,7 @@ class _ChequesPageState extends State<ChequesPage> {
   }
 
   void _showBouncedChequeDialog(Cheque cheque) {
-    _bouncedReasonController.text = "Bounced Check No ${cheque.chequeNo}";
+    _bouncedReasonController.text = "Bounced Cheque No ${cheque.chequeNo}";
 
     showDialog(
       context: context,
@@ -650,7 +672,7 @@ class _ChequesPageState extends State<ChequesPage> {
         return Dialog(
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,32 +680,37 @@ class _ChequesPageState extends State<ChequesPage> {
                 Container(
                   width: double.infinity,
                   color: Colors.orange,
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(6),
                   child: const Center(
                     child: Text(
                       'Bounced Cheque',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 Text(
                   'Cheque No: ${cheque.chequeNo}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 16),
-                const Text('Reason'),
+                const SizedBox(height: 8),
+                const Text(
+                  'Reason',
+                  style: TextStyle(fontSize: 12),
+                ),
                 TextField(
                   controller: _bouncedReasonController,
+                  style: const TextStyle(fontSize: 12),
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -691,16 +718,16 @@ class _ChequesPageState extends State<ChequesPage> {
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
-                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Cancel',
-                        style: TextStyle(color: Colors.white),
-                      )
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
                     ),
-                    SizedBox(width: 8.0),
+                    const SizedBox(width: 6.0),
                     ElevatedButton(
                       onPressed: () async {
                         if (_bouncedReasonController.text.trim().isEmpty) {
@@ -730,14 +757,14 @@ class _ChequesPageState extends State<ChequesPage> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF022E44),
-                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        backgroundColor: const Color(0xFF022E44),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Save',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
                   ],
@@ -750,79 +777,88 @@ class _ChequesPageState extends State<ChequesPage> {
     );
   }
 
- void _deleteCheque(Cheque cheque) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Delete Cheque', style: TextStyle(color: Colors.red)),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to delete this cheque?',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            _buildDialogRow('Cheque No:', cheque.chequeNo),
-            _buildDialogRow('Name:', cheque.name),
-            SizedBox(height: 16),
-            if (chequeDeleteReason == "yes")
-              TextField(
-                controller: _deleteReasonController,
-                decoration: InputDecoration(
-                  labelText: 'Reason',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
+  void _deleteCheque(Cheque cheque) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Delete Cheque',
+          style: TextStyle(color: Colors.red, fontSize: 12),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Are you sure you want to delete this cheque?',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
               ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            if (chequeDeleteReason == "yes" && _deleteReasonController.text.trim().isEmpty) {
-              _showError('Please provide a reason for deletion');
-              return;
-            }
-
-            Navigator.pop(context);
-            Map<String, dynamic> result = await _saveChequeData(
-              'delete',
-              chqId: cheque.chqId,
-              reason: _deleteReasonController.text,
-            );
-
-            if (result['result'] == '1') {
-              if (mounted) {
-                setState(() {
-                  _showSuccess(result['message']);
-                  fetchCheques();
-                });
-              }
-            } else {
-              _showError(result['message']);
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6), 
-            minimumSize: Size(60, 30), 
-            textStyle: TextStyle(fontSize: 12), 
+              const SizedBox(height: 8),
+              _buildDialogRow('Cheque No:', cheque.chequeNo,),
+              _buildDialogRow('Name:', cheque.name),
+              const SizedBox(height: 8),
+              if (chequeDeleteReason == "yes")
+                TextField(
+                  controller: _deleteReasonController,
+                  style: const TextStyle(fontSize: 12),
+                  decoration: const InputDecoration(
+                    labelText: 'Reason',
+                    labelStyle: TextStyle(fontSize: 12),
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  ),
+                  maxLines: 2,
+                ),
+            ],
           ),
-          child: Text('Delete'),
         ),
-      ],
-    ),
-  );
-}
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (chequeDeleteReason == "yes" && _deleteReasonController.text.trim().isEmpty) {
+                _showError('Please provide a reason for deletion');
+                return;
+              }
+
+              Navigator.pop(context);
+              Map<String, dynamic> result = await _saveChequeData(
+                'delete',
+                chqId: cheque.chqId,
+                reason: _deleteReasonController.text,
+              );
+
+              if (result['result'] == '1') {
+                if (mounted) {
+                  setState(() {
+                    _showSuccess(result['message']);
+                    fetchCheques();
+                  });
+                }
+              } else {
+                _showError(result['message']);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: const Size(40, 20),
+              textStyle: const TextStyle(fontSize: 12),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
     final DateTime? picked = await showDatePicker(
@@ -857,30 +893,52 @@ class _ChequesPageState extends State<ChequesPage> {
   }
 
   Widget _buildDialogRow(String label, String value) {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontWeight: FontWeight.w500),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.right,
-            maxLines: 1, 
-            overflow: TextOverflow.ellipsis, 
-            softWrap: false,
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontWeight: FontWeight.w500),
           ),
-        ),
-      ],
-    ),
-  );
-}
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.right,
+              maxLines: 1, 
+              overflow: TextOverflow.ellipsis, 
+              softWrap: false,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  DateTime? _parseDate(String dateStr) {
+    try {
+      if (dateStr.contains('-')) {
+        return DateTime.parse(dateStr);
+      } else if (dateStr.contains('/')) {
+        List<String> parts = dateStr.split('/');
+        if (parts.length == 3) {
+          return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  String _formatDate(String dateStr) {
+    DateTime? date = _parseDate(dateStr);
+    if (date != null) {
+      return DateFormat('dd-MM-yyyy').format(date);
+    }
+    return dateStr;
+  }
 
   Widget _buildChequeCard(Cheque cheque) {
     String normalizedStatus = cheque.status.toLowerCase().trim();
@@ -889,77 +947,300 @@ class _ChequesPageState extends State<ChequesPage> {
     bool showButtons = normalizedStatus == "pending" || (!showClearedMessage && !showBouncedMessage);
 
     return Card(
-      elevation: 5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding(
-        padding: EdgeInsets.all(8.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+      ),
+      elevation: 1.5,
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade200, width: 0.5),
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('No: ${cheque.chequeNo}',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Spacer(),
-                Text(cheque.date,
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
-              ],
-            ),
-            Text(capitalizeWords(cheque.name),
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo,
-                    fontSize: 16)),
-            Text(capitalizeWords('Bank: ${cheque.bank}')),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text('Cheque: ${cheque.amount}',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            if (showClearedMessage)
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                SizedBox(height: 48),
-                Text("Cheque has been cleared.",
-                    style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16)),
-              ]),
-            if (showBouncedMessage)
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                SizedBox(height: 48),
-                Text("Cheque has been bounced.",
-                    style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16)),
-              ]),
-            if (showButtons)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+            // Header Section with Cheque Number and Date
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(6),
+                  topRight: Radius.circular(6),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if (chequeEdit == "yes")
-                    _buildButton(
-                        "Edit", Icons.edit, Color(0xFF022E44), () => _editCheque(cheque)),
-                  if (chequeClear == "yes")
-                    _buildButton("Cleared", null, Colors.green, () => _showClearedChequeDialog(cheque)),
-                  if (chequeBounce == "yes")
-                    _buildButton("Bounced", null, Colors.orange, () => _showBouncedChequeDialog(cheque)),
-                  if (chequeDelete == "yes")
-                    _buildButton("Delete", null, Colors.red, () {
-                      if (chequeDeleteReason == "yes") {
-                        _deleteCheque(cheque);
-                      } else {
-                        _simpleDeleteCheque(cheque);
-                      }
-                    }),
+                  Expanded(
+                    child: Text(
+                      'Cheque No: ${cheque.chequeNo}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color.fromARGB(255, 5, 38, 76),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 10,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        _formatDate(cheque.date),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
+            ),
+            
+            // Content Section
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  // Customer Name Section
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person,
+                        size: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          cheque.name,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 6),
+                  
+                  // Bank and Amount Section
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                    ),
+                    child: Row(
+                      children: [
+                        // Bank Section
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Bank',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                cheque.bank,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Vertical divider
+                        Container(
+                          height: 24,
+                          width: 0.8,
+                          color: Colors.grey.shade300,
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
+                        
+                        // Amount Section
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Amount',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                cheque.amount,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Status messages
+                  if (showClearedMessage)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        "Cheque has been cleared.",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ),
+                  if (showBouncedMessage)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        "Cheque has been bounced.",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ),
+                  
+                  // Action buttons row
+                  if (showButtons) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        
+                        Row(
+                          children: [
+                            if (chequeClear == "yes")
+                              _buildActionButton(
+                                icon: Icons.check,
+                                text: 'Clear',
+                                bgColor: Colors.green,
+                                onPressed: () => _showClearedChequeDialog(cheque),
+                              ),
+                            if (chequeClear == "yes")
+                              const SizedBox(width: 4),
+                            if (chequeBounce == "yes")
+                              _buildActionButton(
+                                icon: Icons.close,
+                                text: 'Bounce',
+                                bgColor: Colors.orange,
+                                onPressed: () => _showBouncedChequeDialog(cheque),
+                              ),
+                          ],
+                        ),
+                        
+                        // Modified edit and delete buttons to match orders_page.dart
+                        Row(
+                          children: [
+                            if (chequeEdit == "yes")
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                  foregroundColor: Colors.white,
+                                  elevation: 1,
+                                  padding: const EdgeInsets.all(6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: () => _editCheque(cheque),
+                                child: const Icon(Icons.edit, size: 12, color: Colors.white),
+                              ),
+                            if (chequeEdit == "yes") const SizedBox(width: 6),
+                            if (chequeDelete == "yes")
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.shade600,
+                                  foregroundColor: Colors.white,
+                                  elevation: 1,
+                                  padding: const EdgeInsets.all(6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: () {
+                                  if (chequeDeleteReason == "yes") {
+                                    _deleteCheque(cheque);
+                                  } else {
+                                    _simpleDeleteCheque(cheque);
+                                  }
+                                },
+                                child: const Icon(Icons.delete, size: 12, color: Colors.white),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String text,
+    required Color bgColor,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      icon: Icon(icon, size: 12, color: Colors.white),
+      label: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: bgColor,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(3),
         ),
       ),
     );
@@ -979,107 +1260,74 @@ class _ChequesPageState extends State<ChequesPage> {
     }
   }
 
-  Widget _buildButton(
-      String text, IconData? icon, Color color, VoidCallback? onPressed) {
-    return Padding(
-      padding: EdgeInsets.only(left: 8.0),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          minimumSize: Size.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 14.0),
-              SizedBox(width: 4),
-            ],
-            Text(text, style: TextStyle(fontSize: 12.0)),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (isLoading && filteredCheques.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Cheques'),
+          backgroundColor: AppTheme.primaryColor,
+          centerTitle: true,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('CHEQUES'),
-        centerTitle: true,
+        title: const Text('Cheques'),
         backgroundColor: AppTheme.primaryColor,
+        centerTitle: true,
         actions: [
           if (chequeView == "yes")
             IconButton(
-              icon: Icon(Icons.search),
+              icon: const Icon(Icons.search),
               onPressed: _showSearchDialog,
             )
         ],
       ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: filteredCheques.isEmpty
-                      ? Center(child: Text('No cheques found.'))
-                      : GridView.builder(
-                          padding: EdgeInsets.all(8),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: _getCrossAxisCount(context),
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 7,
-                            childAspectRatio: _getChildAspectRatio(context),
-                          ),
-                          itemCount: filteredCheques.length,
-                          itemBuilder: (context, index) {
-                            return _buildChequeCard(filteredCheques[index]);
-                          },
-                        ),
-                ),
-                SlidingPaginationControls(
-                  currentPage: currentPage,
-                  totalItems: chequesTotal,
-                  itemsPerPage: itemsPerPage,
-                  maxVisiblePages: maxVisiblePages,
-                  onPageChanged: (newPage) {
-                    setState(() {
-                      currentPage = newPage;
-                    });
-                    fetchCheques();
-                  },
-                  isLoading: isLoading,
-                ),
-              ],
-            ),
+      body: Column(
+        children: [
+          Expanded(
+            child: filteredCheques.isEmpty
+                ? const Center(child: Text("No cheques found.", style: TextStyle(fontSize: 16)))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(10),
+                    itemCount: filteredCheques.length,
+                    itemBuilder: (context, index) {
+                      final cheque = filteredCheques[index];
+                      return _buildChequeCard(cheque);
+                    },
+                  ),
+          ),
+          SlidingPaginationControls(
+            currentPage: currentPage,
+            totalItems: chequesTotal,
+            itemsPerPage: itemsPerPage,
+            maxVisiblePages: maxVisiblePages,
+            onPageChanged: _onPageChanged,
+            isLoading: isLoading,
+          ),
+        ],
+      ),
       floatingActionButton: chequeAdd == "yes"
           ? FloatingActionButton(
               onPressed: _navigateToNewChequePage,
               backgroundColor: AppTheme.primaryColor,
-              child: Icon(Icons.add),
+              child: const Icon(Icons.add),
             )
           : null,
-      bottomNavigationBar: BottomNavigationButton(
+      bottomNavigationBar: const BottomNavigationButton(
         selectedIndex: 0,
       ),
     );
   }
 
-  int _getCrossAxisCount(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width > 1000) return 3;
-    if (width > 600) return 2;
-    return 1;
-  }
-
-  double _getChildAspectRatio(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    return width > 375 ? 2.2 : 1.9;
+  void _onPageChanged(int newPage) {
+    setState(() {
+      currentPage = newPage;
+    });
+    fetchCheques();
   }
 }
 

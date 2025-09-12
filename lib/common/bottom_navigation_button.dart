@@ -7,6 +7,7 @@ import '../utils/constants.dart';
 import '../screens/report_page.dart';
 import '../screens/punchin/punchin_details.dart';
 import '../screens/login_page.dart';
+import '../screens/home_page.dart'; // Add this import - replace with your actual home page import
 
 class BottomNavigationButton extends StatelessWidget {
   final int selectedIndex;
@@ -17,21 +18,47 @@ class BottomNavigationButton extends StatelessWidget {
   }) : super(key: key);
 
   void _onItemTapped(BuildContext context, int index) {
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ReportPage()),
-      );
+    // Get current route name to avoid unnecessary navigation
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+    
+    if (index == 0) {
+      // Handle Home navigation
+      // Only navigate if we're not already on the home page
+      if (currentRoute != '/home' && currentRoute != '/') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HomePage(), 
+            settings: const RouteSettings(name: '/home'),
+          ),
+          (route) => false, 
+        );
+      }
+    } else if (index == 1) {
+      // Handle Reports navigation
+      if (currentRoute != '/report') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ReportPage(),
+            settings: const RouteSettings(name: '/report'),
+          ),
+        );
+      }
     } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const PunchInDetailsPage()), 
-      );
+      // Handle Punch-in navigation
+      if (currentRoute != '/punchin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PunchInDetailsPage(),
+            settings: const RouteSettings(name: '/punchin'),
+          ),
+        );
+      }
     } else if (index == 3) {
       _showLogoutOptions(context);
     }
-    // Note: We don't handle index 0 (Home) here as it would create navigation loops
-    // Each page should handle its own home navigation if needed
   }
 
   void _showLogoutOptions(BuildContext context) {
@@ -204,13 +231,13 @@ class BottomNavigationButton extends StatelessWidget {
                 Icon(
                   Icons.lock_outline,
                   color: AppTheme.primaryColor,
-                  size: 24,
+                  size: 20,
                 ),
                 const SizedBox(width: 8),
                 const Text(
                   'Change Password',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -225,9 +252,12 @@ class BottomNavigationButton extends StatelessWidget {
                     controller: currentPasswordController,
                     obscureText: obscureCurrentPassword,
                     enabled: !isLoading,
+                    style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
                       labelText: 'Current Password',
+                      labelStyle: const TextStyle(fontSize: 12),
                       hintText: 'Enter your current password',
+                      hintStyle: const TextStyle(fontSize: 12),
                       filled: true,
                       fillColor: Colors.grey.shade100,
                       border: OutlineInputBorder(
@@ -237,11 +267,13 @@ class BottomNavigationButton extends StatelessWidget {
                       prefixIcon: Icon(
                         Icons.lock_outline,
                         color: Colors.grey.shade600,
+                        size: 18,
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
                           obscureCurrentPassword ? Icons.visibility_off : Icons.visibility,
                           color: Colors.grey.shade600,
+                          size: 18,
                         ),
                         onPressed: () {
                           setState(() {
@@ -257,9 +289,12 @@ class BottomNavigationButton extends StatelessWidget {
                     controller: newPasswordController,
                     obscureText: obscureNewPassword,
                     enabled: !isLoading,
+                    style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
                       labelText: 'New Password',
+                      labelStyle: const TextStyle(fontSize: 12),
                       hintText: 'Enter your new password',
+                      hintStyle: const TextStyle(fontSize: 12),
                       filled: true,
                       fillColor: Colors.grey.shade100,
                       border: OutlineInputBorder(
@@ -269,11 +304,13 @@ class BottomNavigationButton extends StatelessWidget {
                       prefixIcon: Icon(
                         Icons.lock,
                         color: AppTheme.primaryColor,
+                        size: 18,
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
                           obscureNewPassword ? Icons.visibility_off : Icons.visibility,
                           color: Colors.grey.shade600,
+                          size: 18,
                         ),
                         onPressed: () {
                           setState(() {
@@ -289,9 +326,12 @@ class BottomNavigationButton extends StatelessWidget {
                     controller: confirmPasswordController,
                     obscureText: obscureConfirmPassword,
                     enabled: !isLoading,
+                    style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
                       labelText: 'Confirm New Password',
+                      labelStyle: const TextStyle(fontSize: 12),
                       hintText: 'Confirm your new password',
+                      hintStyle: const TextStyle(fontSize: 12),
                       filled: true,
                       fillColor: Colors.grey.shade100,
                       border: OutlineInputBorder(
@@ -301,11 +341,13 @@ class BottomNavigationButton extends StatelessWidget {
                       prefixIcon: Icon(
                         Icons.lock_reset,
                         color: AppTheme.primaryColor,
+                        size: 18,
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
                           obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
                           color: Colors.grey.shade600,
+                          size: 18,
                         ),
                         onPressed: () {
                           setState(() {
@@ -321,8 +363,8 @@ class BottomNavigationButton extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         SizedBox(
-                          width: 20,
-                          height: 20,
+                          width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: AppTheme.primaryColor,
@@ -333,7 +375,7 @@ class BottomNavigationButton extends StatelessWidget {
                           'Updating password...',
                           style: TextStyle(
                             color: Colors.grey.shade600,
-                            fontSize: 14,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -355,6 +397,7 @@ class BottomNavigationButton extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w500,
+                    fontSize: 12,
                   ),
                 ),
               ),
@@ -390,6 +433,7 @@ class BottomNavigationButton extends StatelessWidget {
                   'Change Password',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                 ),
               ),

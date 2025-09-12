@@ -17,7 +17,7 @@ class LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _obscurePassword = true; // Default: password is hidden, eye is crossed
+  bool _obscurePassword = true; 
 
   @override
   void dispose() {
@@ -151,7 +151,7 @@ class LoginPageState extends State<LoginPage> {
       body: Stack(
         children: [
           Container(
-            height: MediaQuery.of(context).size.height * 0.3,
+            height: MediaQuery.of(context).size.height * 0.35,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -174,21 +174,27 @@ class LoginPageState extends State<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 20),
-                    Icon(
-                      Icons.login,
-                      size: 80,
-                      color: Colors.white,
+                    const SizedBox(height: 5),
+                    Column(
+                      children: [
+                        Image.asset(
+                          'assets/images/cm_logo.png',
+                          width: 180,
+                          height: 180,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(height: 1),
+                        const Text(
+                          "Welcome Back",
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
-                    const Text(
-                      "Welcome Back",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 30),
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -221,6 +227,7 @@ class LoginPageState extends State<LoginPage> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -290,7 +297,7 @@ class LoginPageState extends State<LoginPage> {
   Widget _buildPasswordField() {
     return TextField(
       controller: _passwordController,
-      obscureText: _obscurePassword, // This hides password when true
+      obscureText: _obscurePassword, 
       decoration: InputDecoration(
         labelText: 'Password',
         hintText: 'Enter your password',
@@ -306,8 +313,6 @@ class LoginPageState extends State<LoginPage> {
         ),
         suffixIcon: IconButton(
           icon: Icon(
-            // When password is hidden (_obscurePassword = true), show crossed eye (visibility_off)
-            // When password is visible (_obscurePassword = false), show open eye (visibility)
             _obscurePassword ? Icons.visibility_off : Icons.visibility,
             color: Theme.of(context).primaryColor,
           ),

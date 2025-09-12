@@ -71,22 +71,74 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
   final int maxVisiblePages = 3;
 
   List<PunchIn> _punchIns = [];
-  List<PunchIn> filteredPunchIns = [];
   int punchInsTotal = 0;
   bool isLoading = false;
   List<Customer> _customers = [];
+  bool _isLoadingCustomers = true;
 
   @override
   void initState() {
     super.initState();
-    _loadPunchInData();
     _loadCustomers();
+    fetchPunchIns();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> fetchPunchIns() async {
+    if (!mounted) return;
+    setState(() {
+      isLoading = true;
+    });
+    
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? url = prefs.getString('url');
+    String? unid = prefs.getString('unid');
+    String? slex = prefs.getString('slex');
+    
+    try {
+      final response = await http.post(
+        Uri.parse('$url/punch-in.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "unid": unid,
+          "slex": slex,
+          "srch": searchQuery,
+          "page": currentPage.toString(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['result'] == "1") {
+          // FIX: Convert string to int for ttlattend
+          punchInsTotal = int.tryParse(data['ttlattend']?.toString() ?? '0') ?? 0;
+          final List<dynamic> punchInsList = data['punchindet'] ?? [];
+          setState(() {
+            _punchIns = punchInsList.map((json) => PunchIn.fromJson(json)).toList();
+          });
+          if (punchInsList.isEmpty) {
+            _showError('No punch-in data found');
+          }
+        } else {
+          _showError(data['message'] ?? 'Failed to fetch punch-ins.');
+        }
+      } else {
+        _showError('Error: ${response.statusCode}');
+      }
+    } catch (error) {
+      _showError('An error occurred: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadCustomers() async {
@@ -112,17 +164,19 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
           final List<dynamic> customerList = responseData['customers'] ?? [];
           setState(() {
             _customers = customerList.map((json) => Customer.fromJson(json)).toList();
+            _isLoadingCustomers = false;
           });
         }
       }
     } catch (e) {
-      debugPrint("Error loading customers: $e");
+      _showError("Error loading customers: $e");
+      setState(() {
+        _isLoadingCustomers = false;
+      });
     }
   }
 
-  Future<void> _loadPunchInData() async {
-    setState(() => isLoading = true);
-
+  Future<Map<String, dynamic>> _savePunchInData(String action, {String? attid, String? custId, String? custName, String? location, String? notes}) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? url = prefs.getString('url');
@@ -130,37 +184,46 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
       String? slex = prefs.getString('slex');
 
       if (url == null || unid == null || slex == null) {
-        throw Exception('Missing configuration data. Please login again.');
+        return {"result": "0", "message": "Missing credentials"};
+      }
+
+      Map<String, dynamic> requestBody = {
+        "unid": unid,
+        "slex": slex,
+        "action": action,
+      };
+
+      if (action == 'delete' && attid != null) {
+        requestBody["attid"] = attid;
+      } else if (action == 'update' && attid != null) {
+        requestBody["attid"] = attid;
+        requestBody["cust_id"] = custId;
+        requestBody["customer_name"] = custName;
+        requestBody["location"] = location;
+        requestBody["notes"] = notes;
       }
 
       final response = await http.post(
-        Uri.parse('$url/punch-in.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"unid": unid, "slex": slex, "page": ""}),
-      ).timeout(const Duration(seconds: 30));
-
+        Uri.parse('$url/action/punch-in.php'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(requestBody),
+      );
+      
       if (response.statusCode == 200) {
-        Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['result'] == '1') {
-          final List<dynamic> punchInList = responseData['punchindet'] ?? [];
-          final int totalAttendance = responseData['ttlattend'] ?? 0;
-
-          setState(() {
-            _punchIns = punchInList.map((json) => PunchIn.fromJson(json)).toList();
-            filteredPunchIns = _punchIns;
-            punchInsTotal = totalAttendance;
-            isLoading = false;
-          });
-        }
+        return json.decode(response.body);
+      } else {
+        return {"result": "0", "message": "Failed to process request"};
       }
     } catch (e) {
-      setState(() => isLoading = false);
-      _showError('Error loading data: ${e.toString()}');
+      return {"result": "0", "message": "Network error: $e"};
     }
   }
 
   void _onPageChanged(int newPage) {
-    setState(() => currentPage = newPage);
+    setState(() {
+      currentPage = newPage;
+    });
+    fetchPunchIns();
   }
 
   void _showSearchDialog() {
@@ -175,31 +238,24 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.of(context).pop();
               _searchController.clear();
               setState(() {
                 searchQuery = '';
                 currentPage = 1;
-                filteredPunchIns = _punchIns;
-                punchInsTotal = _punchIns.length;
               });
+              fetchPunchIns();
             },
             child: const Text('Clear'),
           ),
           TextButton(
             onPressed: () {
               setState(() {
-                searchQuery = _searchController.text.toLowerCase();
+                searchQuery = _searchController.text;
                 currentPage = 1;
-                filteredPunchIns = searchQuery.isEmpty
-                    ? _punchIns
-                    : _punchIns.where((punchIn) {
-                        return punchIn.custname.toLowerCase().contains(searchQuery) ||
-                               punchIn.location.toLowerCase().contains(searchQuery);
-                      }).toList();
-                punchInsTotal = filteredPunchIns.length;
               });
-              Navigator.pop(context);
+              Navigator.of(context).pop();
+              fetchPunchIns();
             },
             child: const Text('Search'),
           ),
@@ -214,8 +270,8 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
       MaterialPageRoute(builder: (_) => const CameraPageScreen()),
     );
     if (result != null) {
+      fetchPunchIns();
       _showSuccess('New punch-in added successfully!');
-      _refreshData();
     }
   }
 
@@ -224,75 +280,185 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
   }
 
   void _showEditPunchInDialog(PunchIn punchIn) {
-    final locationController = TextEditingController(text: punchIn.location);
-    final noteController = TextEditingController(text: punchIn.notes);
+    final TextEditingController customerNameController = TextEditingController();
+    final TextEditingController locationController = TextEditingController();
+    final TextEditingController notesController = TextEditingController();
+    
     DateTime selectedDate = DateTime.now();
+    String? selectedCustomerId;
+    String? selectedCustomerName;
+    bool isCustomerDropdownOpen = false;
+    List<String> customerNames = _customers.map((e) => e.name).toList();
+    List<String> filteredCustomers = [];
+    bool isLoading = false;
+
     try {
       selectedDate = DateFormat("dd/MM/yyyy").parse(punchIn.date);
     } catch (e) {
       selectedDate = DateTime.now();
     }
 
-    String? selectedCustomerId = punchIn.custid.isNotEmpty ? punchIn.custid : null;
-    String selectedCustomerName = punchIn.custname;
+    selectedCustomerName = punchIn.custname;
+    customerNameController.text = punchIn.custname;
+    selectedCustomerId = punchIn.custid;
+    locationController.text = punchIn.location;
+    notesController.text = punchIn.notes;
+    filteredCustomers = List.from(customerNames);
+
     final formKey = GlobalKey<FormState>();
-    bool isLoading = false;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          InputDecoration inputDecoration(String label) {
-            return InputDecoration(
-              labelText: label,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            );
+          void filterCustomers() {
+            final searchText = customerNameController.text.toLowerCase();
+            setDialogState(() {
+              if (searchText.isEmpty) {
+                filteredCustomers = List.from(customerNames);
+              } else {
+                filteredCustomers = customerNames
+                    .where((customer) => customer.toLowerCase().contains(searchText))
+                    .toList();
+              }
+            });
           }
 
-          Future<void> selectDate(BuildContext context) async {
-            final DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: selectedDate,
-              firstDate: DateTime(2000),
-              lastDate: DateTime.now(),
+          void selectCustomer(String customerName) {
+            setDialogState(() {
+              final customer = _customers.firstWhere((c) => c.name == customerName);
+              selectedCustomerId = customer.id;
+              selectedCustomerName = customerName;
+              customerNameController.text = customerName;
+              isCustomerDropdownOpen = false;
+            });
+          }
+
+          Widget buildCustomerDropdown() {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: customerNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Customer Name',
+                    labelStyle: const TextStyle(fontSize: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.grey),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.grey),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isCustomerDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          isCustomerDropdownOpen = !isCustomerDropdownOpen;
+                          if (isCustomerDropdownOpen) {
+                            filterCustomers();
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                  onTap: () {
+                    setDialogState(() {
+                      isCustomerDropdownOpen = !isCustomerDropdownOpen;
+                      if (isCustomerDropdownOpen) {
+                        filterCustomers();
+                      }
+                    });
+                  },
+                  onChanged: (value) {
+                    filterCustomers();
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a customer';
+                    }
+                    return null;
+                  },
+                ),
+                if (isCustomerDropdownOpen)
+                  Container(
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.3),
+                          spreadRadius: 1,
+                          blurRadius: 5,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: filteredCustomers.length,
+                      itemBuilder: (context, index) {
+                        final customer = filteredCustomers[index];
+                        return ListTile(
+                          dense: true,
+                          title: Text(
+                            customer,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          onTap: () {
+                            selectCustomer(customer);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
             );
-            if (picked != null && picked != selectedDate) {
-              setDialogState(() => selectedDate = picked);
-            }
           }
 
           Future<void> submitForm() async {
             if (formKey.currentState!.validate()) {
-              if (selectedCustomerId == null) {
-                _showError('Please select a customer');
-                return;
-              }
-
-              setDialogState(() => isLoading = true);
+              setDialogState(() {
+                isLoading = true;
+              });
 
               try {
-                await _updatePunchInRecord(
-                  punchIn.attid,
-                  selectedCustomerId!,
-                  selectedCustomerName,
-                  locationController.text,
-                  noteController.text,
-                  selectedDate,
+                Map<String, dynamic> result = await _savePunchInData(
+                  'update',
+                  attid: punchIn.attid,
+                  custId: selectedCustomerId,
+                  custName: selectedCustomerName,
+                  location: locationController.text.trim(),
+                  notes: notesController.text.trim(),
                 );
-                Navigator.pop(context);
-                _showSuccess('Punch-in updated successfully');
-                _refreshData();
+
+                if (result['result'] == '1') {
+                  Navigator.pop(context);
+                  fetchPunchIns();
+                  _showSuccess(result['message'] ?? 'Punch-in updated successfully');
+                } else {
+                  _showError(result['message'] ?? 'Failed to update punch-in');
+                }
               } catch (e) {
-                _showError('Failed to update: ${e.toString()}');
+                _showError('An error occurred: $e');
               } finally {
-                setDialogState(() => isLoading = false);
+                setDialogState(() {
+                  isLoading = false;
+                });
               }
             }
           }
@@ -307,79 +473,138 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
                       color: AppTheme.primaryColor,
-                      borderRadius: const BorderRadius.only(
+                      borderRadius:  BorderRadius.only(
                         topLeft: Radius.circular(4),
                         topRight: Radius.circular(4),
                       ),
                     ),
                     child: Row(
                       children: [
-                        const Expanded(child: Text('EDIT PUNCH-IN', style: TextStyle(color: Colors.white, fontSize: 18))),
+                        const Expanded(
+                          child: Text(
+                            'Edit Punch-in',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close, color: Colors.white),
+                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
                       ],
                     ),
                   ),
                   Flexible(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       child: Form(
                         key: formKey,
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            DropdownButtonFormField<String>(
-                              value: selectedCustomerId,
-                              decoration: inputDecoration('Customer Name *'),
-                              items: [
-                                if (punchIn.custid.isNotEmpty && !_customers.any((c) => c.id == punchIn.custid))
-                                  DropdownMenuItem(
-                                    value: punchIn.custid,
-                                    child: Text(_capitalizeWords(punchIn.custname)),
-                                  ),
-                                ..._customers.map((customer) => DropdownMenuItem(
-                                  value: customer.id,
-                                  child: Text(_capitalizeWords(customer.name)),
-                                )),
-                              ],
-                              onChanged: (String? newValue) {
-                                setDialogState(() {
-                                  selectedCustomerId = newValue;
-                                  if (newValue != null) {
-                                    final customer = _customers.firstWhere(
-                                      (c) => c.id == newValue,
-                                      orElse: () => Customer(id: newValue, name: punchIn.custname),
-                                    );
-                                    selectedCustomerName = customer.name;
-                                  }
-                                });
-                              },
-                              validator: (value) => value == null ? 'Please select a customer' : null,
-                            ),
-                            const SizedBox(height: 16),
+                            buildCustomerDropdown(),
+                            const SizedBox(height: 12),
                             InkWell(
-                              onTap: () => selectDate(context),
+                              onTap: () async {
+                                final DateTime? picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate,
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (picked != null && picked != selectedDate) {
+                                  setDialogState(() => selectedDate = picked);
+                                }
+                              },
                               child: InputDecorator(
-                                decoration: inputDecoration('Date'),
-                                child: Text(DateFormat.yMMMMd().format(selectedDate)),
+                                decoration: InputDecoration(
+                                  labelText: 'Date',
+                                  labelStyle: const TextStyle(fontSize: 12),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(color: Colors.grey),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                ),
+                                child: Text(
+                                  DateFormat('dd/MM/yyyy').format(selectedDate),
+                                  style: const TextStyle(fontSize: 12),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: locationController,
-                              decoration: inputDecoration('Location *'),
-                              validator: (value) => value?.isEmpty ?? true ? 'Please enter location' : null,
+                              decoration: InputDecoration(
+                                labelText: 'Location',
+                                labelStyle: const TextStyle(fontSize: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Colors.grey),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Colors.grey),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                              ),
+                              style: const TextStyle(fontSize: 12),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter location';
+                                }
+                                return null;
+                              },
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             TextFormField(
-                              controller: noteController,
-                              decoration: inputDecoration('Note'),
-                              maxLines: 3,
+                              controller: notesController,
+                              decoration: InputDecoration(
+                                labelText: 'Notes',
+                                labelStyle: const TextStyle(fontSize: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Colors.grey),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: Colors.grey),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                              ),
+                              style: const TextStyle(fontSize: 12),
+                              maxLines: 2,
                             ),
                           ],
                         ),
@@ -387,7 +612,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
                       borderRadius: const BorderRadius.only(
@@ -400,22 +625,29 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
                       children: [
                         TextButton(
                           onPressed: isLoading ? null : () => Navigator.pop(context),
-                          child: const Text('Cancel'),
+                          child: const Text('CANCEL', style: TextStyle(fontSize: 12)),
                         ),
                         const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: isLoading ? null : submitForm,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 32, 104, 163),
-                            foregroundColor: Colors.white,
+                        SizedBox(
+                          height: 28,
+                          child: ElevatedButton(
+                            onPressed: isLoading ? null : submitForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color.fromARGB(255, 32, 104, 163),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            ),
+                            child: isLoading 
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Text('UPDATE', style: TextStyle(fontSize: 12)),
                           ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('UPDATE', style: TextStyle(fontSize: 12)),
                         ),
                       ],
                     ),
@@ -429,117 +661,133 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
     );
   }
 
-  Future<void> _updatePunchInRecord(
-    String attid, 
-    String customerId, 
-    String customerName, 
-    String location, 
-    String notes, 
-    DateTime date
-  ) async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? url = prefs.getString('url');
-      String? unid = prefs.getString('unid');
-      String? slex = prefs.getString('slex');
-
-      if (url == null || unid == null || slex == null) {
-        throw Exception('Missing configuration data');
-      }
-
-      final response = await http.post(
-        Uri.parse('$url/action/punch-in.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "unid": unid,
-          "slex": slex,
-          "customer_name": customerName,
-          "cust_id": customerId,
-          "action": "update",
-          "attid": attid,
-          "notes": notes,
-        }),
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['result'] != '1') {
-          throw Exception(responseData['message'] ?? 'Update failed');
-        }
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   void _deletePunchIn(PunchIn punchIn) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("DELETE"),
-        content: const Text("Are you sure that you want to delete this punch-in record?"),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await _deletePunchInRecord(punchIn.attid);
-                _showSuccess('The selected details has been deleted successfully.');
-                _refreshData();
-              } catch (e) {
-                _showError('Failed to delete: ${e.toString()}');
-              }
-            },
-            child: const Text("Delete"),
+        title: const Text('Delete Punch-in', style: TextStyle(color: Colors.red, fontSize: 14)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Are you sure you want to delete this punch-in?',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              _buildDialogRow('Customer:', punchIn.custname),
+              _buildDialogRow('Date:', _formatDate(punchIn.date)),
+              _buildDialogRow('Location:', punchIn.location),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
+        ),
+        actions: [
+          SizedBox(
+            height: 32,
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: const Text('Cancel', style: TextStyle(fontSize: 12)),
+            ),
+          ),
+          SizedBox(
+            height: 32,
+            child: ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                
+                Map<String, dynamic> result = await _savePunchInData(
+                  'delete',
+                  attid: punchIn.attid,
+                );
+
+                if (result['result'] == '1') {
+                  setState(() {
+                    fetchPunchIns();
+                  });
+                  _showSuccess(result['message']);
+                } else {
+                  _showError(result['message']);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: const Text('Delete', style: TextStyle(fontSize: 12)),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _deletePunchInRecord(String attid) async {
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? url = prefs.getString('url');
-      String? unid = prefs.getString('unid');
-      String? slex = prefs.getString('slex');
-
-      if (url == null || unid == null || slex == null) {
-        throw Exception('Missing configuration data');
-      }
-
-      final response = await http.post(
-        Uri.parse('$url/action/punch-in.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "unid": unid,
-          "slex": slex,
-          "action": "delete",
-          "attid": attid,
-        }),
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['result'] != '1') {
-          throw Exception(responseData['message'] ?? 'Delete failed');
-        }
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
-      }
-    } catch (e) {
-      rethrow;
-    }
+  Widget _buildDialogRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.right,
+              maxLines: 1, 
+              overflow: TextOverflow.ellipsis, 
+              softWrap: false, 
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _refreshData() async {
-    await _loadPunchInData();
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red,
+    ));
+  }
+
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.green,
+    ));
+  }
+
+  DateTime? _parseDate(String dateStr) {
+    try {
+      if (dateStr.contains('-')) {
+        return DateTime.parse(dateStr);
+      } else if (dateStr.contains('/')) {
+        List<String> parts = dateStr.split('/');
+        if (parts.length == 3) {
+          return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  String _formatDate(String dateStr) {
+    DateTime? date = _parseDate(dateStr);
+    if (date != null) {
+      return DateFormat('dd-MM-yyyy').format(date);
+    }
+    return dateStr;
   }
 
   String _capitalizeWords(String text) {
@@ -548,67 +796,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
           ? word[0].toUpperCase() + word.substring(1).toLowerCase()
           : '';
     }).join(' ');
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
-    );
-  }
-
-  String _formatDate(String dateStr) {
-    try {
-      DateTime parsedDate = DateFormat("dd/MM/yyyy").parse(dateStr);
-      return DateFormat.yMMMMd().format(parsedDate);
-    } catch (e) {
-      return dateStr;
-    }
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color backgroundColor,
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 16, color: Colors.white),
-      label: Text(label, style: const TextStyle(fontSize: 12, color: Colors.white)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      onPressed: onPressed,
-    );
-  }
-
-  Widget _buildRow(String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w500)),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: color ?? Colors.black87,
-              ),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   void _navigateToHome() {
@@ -620,12 +807,12 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (isLoading && _punchIns.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('PUNCH IN DETAILS'),
-          centerTitle: true,
+          title: const Text('Punch-in-Details'),
           backgroundColor: AppTheme.primaryColor,
+          centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: _navigateToHome,
@@ -635,17 +822,11 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
       );
     }
 
-    final start = (currentPage - 1) * itemsPerPage;
-    final end = (start + itemsPerPage > filteredPunchIns.length)
-        ? filteredPunchIns.length
-        : start + itemsPerPage;
-    final currentList = filteredPunchIns.sublist(start, end);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PUNCH IN DETAILS'),
-        centerTitle: true,
+        title: const Text('Punch-in Details'),
         backgroundColor: AppTheme.primaryColor,
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: _navigateToHome,
@@ -654,110 +835,200 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: _showSearchDialog,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshData,
-          ),
+          )
         ],
       ),
       body: Column(
         children: [
-          if (punchInsTotal > 0)
-            Container(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                'Total Records: $punchInsTotal',
-                style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
-              ),
-            ),
           Expanded(
-            child: currentList.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          searchQuery.isNotEmpty 
-                              ? 'No punch-in records found for "$searchQuery".'
-                              : 'No punch-in records found.',
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+            child: _punchIns.isEmpty
+                ? const Center(child: Text("No punch-ins found.", style: TextStyle(fontSize: 16)))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(10),
+                    itemCount: _punchIns.length,
+                    itemBuilder: (context, index) {
+                      final punchIn = _punchIns[index];
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        if (searchQuery.isNotEmpty)
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                searchQuery = '';
-                                _searchController.clear();
-                                filteredPunchIns = _punchIns;
-                                punchInsTotal = _punchIns.length;
-                                currentPage = 1;
-                              });
-                            },
-                            child: const Text('Clear Search'),
+                        elevation: 1.5,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200, width: 0.5),
                           ),
-                      ],
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _refreshData,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: currentList.length,
-                      itemBuilder: (context, index) {
-                        final punchIn = currentList[index];
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                          elevation: 3,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildRow('Customer', _capitalizeWords(punchIn.custname)),
-                                _buildRow('Date', _formatDate(punchIn.date)),
-                                _buildRow('Location', _capitalizeWords(punchIn.location)),
-                                _buildRow('Notes', _capitalizeWords(punchIn.notes.isEmpty ? 'No notes' : punchIn.notes)),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
+                          child: Column(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(8),
+                                    topRight: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    _buildActionButton(
-                                      icon: Icons.edit,
-                                      label: 'Edit',
-                                      backgroundColor: const Color.fromARGB(255, 5, 38, 76),
-                                      onPressed: () => _editPunchIn(punchIn),
+                                    Expanded(
+                                      child: Text(
+                                        _capitalizeWords(punchIn.custname),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color.fromARGB(255, 5, 38, 76),
+                                        ),
+                                      ),
                                     ),
-                                    const SizedBox(width: 6),
-                                    _buildActionButton(
-                                      icon: Icons.delete,
-                                      label: 'Delete',
-                                      backgroundColor: Colors.red.shade700,
-                                      onPressed: () => _deletePunchIn(punchIn),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          _formatDate(punchIn.date),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Location',
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    color: Colors.grey.shade600,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  _capitalizeWords(punchIn.location),
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Container(
+                                            height: 24,
+                                            width: 1,
+                                            color: Colors.grey.shade300,
+                                            margin: const EdgeInsets.symmetric(horizontal: 8),
+                                          ),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  'Notes',
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    color: Colors.grey.shade600,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  punchIn.notes.isEmpty ? 'No notes' : _capitalizeWords(punchIn.notes),
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.black54
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Align(
+                                      alignment: Alignment.bottomRight,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                            onPressed: () => _editPunchIn(punchIn),
+                                            child: const Icon(Icons.edit, size: 12, color: Colors.white),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red.shade600,
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                            onPressed: () => _deletePunchIn(punchIn),
+                                            child: const Icon(Icons.delete, size: 12, color: Colors.white),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
           ),
-          if (filteredPunchIns.length > itemsPerPage)
-            SlidingPaginationControls(
-              currentPage: currentPage,
-              totalItems: punchInsTotal,
-              itemsPerPage: itemsPerPage,
-              maxVisiblePages: maxVisiblePages,
-              onPageChanged: _onPageChanged,
-              isLoading: isLoading,
-            ),
+          SlidingPaginationControls(
+            currentPage: currentPage,
+            totalItems: punchInsTotal,
+            itemsPerPage: itemsPerPage,
+            maxVisiblePages: maxVisiblePages,
+            onPageChanged: _onPageChanged,
+            isLoading: isLoading,
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -765,7 +1036,9 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
         backgroundColor: AppTheme.primaryColor,
         child: const Icon(Icons.add),
       ),
-      bottomNavigationBar: const BottomNavigationButton(selectedIndex: 2),
+      bottomNavigationBar: const BottomNavigationButton(
+        selectedIndex: 2, 
+      ),
     );
   }
 }

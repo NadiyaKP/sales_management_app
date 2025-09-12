@@ -81,7 +81,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
         return;
       }
 
-      // Use provided customer info - these should not be null when coming from AccountLedgerPage
+      
       String customerName = currentCustomerName ?? "Unknown Customer";
       String custId = currentCustId ?? "";
 
@@ -815,42 +815,43 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
                 const SizedBox(height: 8),
                 
                 // Excel and Print buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _exportToExcel,
-                      icon: const Icon(Icons.file_download, size: 14),
-                      label: const Text('Excel'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[800],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        textStyle: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: _printReport,
-                      icon: const Icon(Icons.print, size: 14),
-                      label: const Text('Print'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        textStyle: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 8),
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
                 
                 // Customer name and date range
                 Text(
                   currentCustomerName ?? 'Sales Return Report',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -871,7 +872,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
               child: Text(
                 headerTitle!,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
@@ -921,7 +922,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
                           Text(
                             summary!.totalAmount,
                             style: const TextStyle(
-                              fontSize: 24,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.green,
                             ),
@@ -969,13 +970,13 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
                           currentCustomerName != null
                               ? 'No sales return records found for ${currentCustomerName}\nin the selected date range.'
                               : 'No sales return records found for the selected date range.',
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '${DateFormat('dd-MM-yyyy').format(_fromDate)} to ${DateFormat('dd-MM-yyyy').format(_toDate)}',
-                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
                       ],
                     ),
@@ -1011,7 +1012,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
                                   child: Text(
                                     'No: ${record.creditNo}',
                                     style: const TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.blue,
                                     ),
@@ -1020,7 +1021,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
                                 Text(
                                   record.returnedDate,
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 12,
                                     color: Colors.grey,
                                   ),
                                 ),
@@ -1030,7 +1031,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
                             Text(
                               record.totalAmount,
                               style: const TextStyle(
-                                fontSize: 22,
+                                fontSize: 1,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.green,
                               ),
@@ -1038,7 +1039,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
                             Text(
                               record.totalCartAmount,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 color: Colors.teal,
                               ),
                             ),
@@ -1058,7 +1059,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
                               Text(
                                 'Notes: ${record.notes}',
                                 style: const TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 12,
                                   color: Colors.black87,
                                 ),
                               ),
@@ -1087,7 +1088,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1108,7 +1109,7 @@ class _AccountSalesReturnPageState extends State<AccountSalesReturnPage> {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),

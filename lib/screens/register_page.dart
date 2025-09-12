@@ -196,7 +196,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
       body: Stack(
         children: [
           Container(
-            height: MediaQuery.of(context).size.height * 0.3,
+            height: MediaQuery.of(context).size.height * 0.35, 
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -219,21 +219,29 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 20),
-                    Icon(
-                      Icons.account_circle,
-                      size: 80,
-                      color: Colors.white,
+                    const SizedBox(height: 5), 
+                    
+                    Column(
+                      children: [
+                        Image.asset(
+                          'assets/images/cm_logo.png',
+                          width: 180,
+                          height: 180,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(height: 1), 
+                        const Text(
+                          "Create Account",
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
-                    const Text(
-                      "Create Account",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 30),
+              
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -272,6 +280,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 20), 
                   ],
                 ),
               ),

@@ -279,7 +279,7 @@ class _OrderReportPageState extends State<OrderReportPage> {
         // Try different permission approaches
         PermissionStatus status;
         
-        // First try manage external storage (Android 11+)
+        // First try manage external storage 
         try {
           status = await Permission.manageExternalStorage.status;
           if (status.isGranted) {
@@ -865,7 +865,7 @@ class _OrderReportPageState extends State<OrderReportPage> {
           'Order Report',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -904,13 +904,13 @@ class _OrderReportPageState extends State<OrderReportPage> {
               borderRadius: BorderRadius.circular(4),
               color: Colors.white,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 8), // Reduced padding
+            padding: const EdgeInsets.symmetric(horizontal: 8), 
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 isExpanded: true,
                 value: _selectedRoute,
                 icon: const Icon(Icons.arrow_drop_down, size: 20),
-                style: const TextStyle(fontSize: 12, color: Colors.black), // Smaller font
+                style: const TextStyle(fontSize: 12, color: Colors.black),
                 items: allRoutes.map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -934,10 +934,10 @@ class _OrderReportPageState extends State<OrderReportPage> {
         ],
       ),
     ),
-    const SizedBox(width: 6), // Reduced spacing
+    const SizedBox(width: 6),
     // From Date
     Expanded(
-      flex: 4, // More space for dates
+      flex: 4, 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -952,7 +952,7 @@ class _OrderReportPageState extends State<OrderReportPage> {
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), // Reduced horizontal padding
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
               width: double.infinity,
               child: Text(
                 DateFormat('dd-MM-yyyy').format(_fromDate),
@@ -964,10 +964,10 @@ class _OrderReportPageState extends State<OrderReportPage> {
         ],
       ),
     ),
-    const SizedBox(width: 6), // Reduced spacing
+    const SizedBox(width: 6), 
     // To Date
     Expanded(
-      flex: 4, // More space for dates
+      flex: 4, 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -982,7 +982,7 @@ class _OrderReportPageState extends State<OrderReportPage> {
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), // Reduced horizontal padding
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
               width: double.infinity,
               child: Text(
                 DateFormat('dd-MM-yyyy').format(_toDate),
@@ -997,43 +997,44 @@ class _OrderReportPageState extends State<OrderReportPage> {
   ],
 ),
                   const SizedBox(height: 16),
-                  
-                  // Excel and Print buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _exportToExcel,
-                        icon: const Icon(Icons.file_download, size: 14),
-                        label: const Text('Excel'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[800], // Dark green color
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Smaller padding
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: _printReport,
-                        icon: const Icon(Icons.print, size: 14),
-                        label: const Text('Print'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor, // Using app primary color
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Smaller padding
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+                 // Excel and Print buttons
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
                   
                   if (mainTitle != null && mainTitle!.isNotEmpty) ...[
                     Text(
                       mainTitle!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -1066,7 +1067,7 @@ class _OrderReportPageState extends State<OrderReportPage> {
                         searchQuery.isNotEmpty
                             ? 'No order records found for "$searchQuery"'
                             : 'No order reports available for the selected date range and route.',
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
                     )
@@ -1101,17 +1102,17 @@ class _OrderReportPageState extends State<OrderReportPage> {
                                   children: [
                                     InkWell(
                                       onTap: () {
-                                        // Navigate to order details - Fixed line
+                                        
                                         Navigator.push(context, MaterialPageRoute(builder: (context) => ViewOrderPage(orderId: order.ordId)));
                                       },
                                       child: Text(
                                         'Order No: ${order.orderNo}',
-                                        style: const TextStyle(fontSize: 16, color: Colors.blue, fontWeight: FontWeight.w500),
+                                        style: const TextStyle(fontSize: 14, color: Colors.blue, fontWeight: FontWeight.w500),
                                       ),
                                     ),
                                     Text(
                                       order.date,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -1119,7 +1120,7 @@ class _OrderReportPageState extends State<OrderReportPage> {
                                 Text(
                                   capitalizeWords(order.customer.customerName),
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.indigo.shade700,
                                   ),
@@ -1128,27 +1129,27 @@ class _OrderReportPageState extends State<OrderReportPage> {
                                 if (order.customer.phone.isNotEmpty) ...[
                                   Text(
                                     order.customer.phone,
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                   ),
                                   const SizedBox(height: 2),
                                 ],
                                 if (order.customer.address.isNotEmpty) ...[
                                   Text(
                                     capitalizeWords(order.customer.address),
-                                    style: const TextStyle(fontSize: 14),
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                   const SizedBox(height: 2),
                                 ],
                                 if (order.customer.gstNo.isNotEmpty) ...[
                                   Text(
                                     'GST No: ${order.customer.gstNo}',
-                                    style: const TextStyle(fontSize: 14),
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                   const SizedBox(height: 2),
                                 ],
                                 Text(
                                   '${order.customer.state}, ${order.customer.stateCode}',
-                                  style: const TextStyle(fontSize: 14),
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ],
                             ),
@@ -1161,7 +1162,7 @@ class _OrderReportPageState extends State<OrderReportPage> {
         ),
       ),
       bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 1, // Home page is at index 0
+        selectedIndex: 1, 
       ),
     );
   }

@@ -90,15 +90,15 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     
     _customerOverlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        width: size.width * 0.9, // Same width as the customer field
+        width: size.width * 0.9,
         child: CompositedTransformFollower(
           link: _customerLayerLink,
           showWhenUnlinked: false,
-          offset: const Offset(0.0, 60.0), // Position below the customer field
+          offset: const Offset(0.0, 55.0),
           child: Material(
             elevation: 4.0,
             child: Container(
-              constraints: const BoxConstraints(maxHeight: 200),
+              constraints: const BoxConstraints(maxHeight: 180),
               color: Colors.white,
               child: ListView.builder(
                 shrinkWrap: true,
@@ -109,7 +109,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                   return InkWell(
                     onTap: () => _selectCustomer(customerName),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
@@ -121,12 +121,12 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.person, color: Colors.grey, size: 16),
-                          const SizedBox(width: 8),
+                          const Icon(Icons.person, color: Colors.grey, size: 14),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               customerName,
-                              style: const TextStyle(fontSize: 14),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                         ],
@@ -514,7 +514,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Customer Name', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const Text('Customer Name', style: TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 4),
               CompositedTransformTarget(
                 link: _customerLayerLink,
@@ -527,11 +527,13 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                   child: TextField(
                     controller: _customerSearchController,
                     focusNode: _customerFocusNode,
+                    style: const TextStyle(fontSize: 12),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                       hintText: 'Type to search customer...',
-                      suffixIcon: Icon(Icons.search, color: Colors.grey),
+                      hintStyle: TextStyle(fontSize: 12),
+                      suffixIcon: Icon(Icons.search, color: Colors.grey, size: 18),
                     ),
                     onChanged: (value) {
                       if (customerNames.contains(value)) {
@@ -552,13 +554,13 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         // Date Field
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Order Date', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              const Text('Order Date', style: TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 4),
               Container(
                 decoration: BoxDecoration(
@@ -569,10 +571,11 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                 child: TextField(
                   controller: _dateController,
                   readOnly: true,
+                  style: const TextStyle(fontSize: 12),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                    suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    suffixIcon: Icon(Icons.calendar_today, color: Colors.grey, size: 18),
                   ),
                   onTap: () => _selectDate(context),
                 ),
@@ -588,7 +591,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Search Products', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        const Text('Search Products', style: TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(
@@ -598,11 +601,13 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
           ),
           child: TextField(
             controller: _searchController,
+            style: const TextStyle(fontSize: 12),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               hintText: 'Search for products...',
-              prefixIcon: Icon(Icons.search, color: Colors.grey),
+              hintStyle: TextStyle(fontSize: 12),
+              prefixIcon: Icon(Icons.search, color: Colors.grey, size: 18),
             ),
           ),
         ),
@@ -614,10 +619,10 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Products', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        const Text('Products', style: TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 4),
         Container(
-          height: 250, 
+          height: 220, 
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: Colors.grey.shade300),
@@ -627,11 +632,11 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
               ? const Center(
                   child: Text(
                     'No products found',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   itemCount: filteredProductNames.length,
                   separatorBuilder: (context, index) => const Divider(height: 1),
                   itemBuilder: (context, index) {
@@ -640,7 +645,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                     bool isSelected = quantity > 0;
                     
                     return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                       decoration: BoxDecoration(
                         color: isSelected ? AppTheme.primaryColor.withOpacity(0.05) : null,
                         borderRadius: BorderRadius.circular(4),
@@ -653,20 +658,20 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                         children: [
                           if (isSelected) ...[
                             Container(
-                              width: 4,
-                              height: 32,
+                              width: 3,
+                              height: 28,
                               decoration: BoxDecoration(
                                 color: AppTheme.primaryColor,
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                           ],
                           Expanded(
                             child: Text(
                               productName,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                 color: isSelected ? AppTheme.primaryColor : Colors.black,
                               ),
@@ -675,23 +680,23 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                           GestureDetector(
                             onTap: () => _incrementQuantity(productName),
                             child: Container(
-                              width: 32,
-                              height: 32,
+                              width: 28,
+                              height: 28,
                               decoration: BoxDecoration(
                                 color: AppTheme.primaryColor,
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: const Icon(
                                 Icons.add,
                                 color: Colors.white,
-                                size: 20,
+                                size: 16,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Container(
-                            width: 50,
-                            height: 32,
+                            width: 40,
+                            height: 28,
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.grey.shade300),
                               borderRadius: BorderRadius.circular(4),
@@ -701,27 +706,27 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
                               child: Text(
                                 quantity.toString(),
                                 style: TextStyle(
-                                  fontSize: 16, 
+                                  fontSize: 12, 
                                   fontWeight: FontWeight.bold,
                                   color: isSelected ? AppTheme.primaryColor : Colors.black,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           GestureDetector(
                             onTap: quantity > 0 ? () => _decrementQuantity(productName) : null,
                             child: Container(
-                              width: 32,
-                              height: 32,
+                              width: 28,
+                              height: 28,
                               decoration: BoxDecoration(
                                 color: quantity > 0 ? Colors.red : Colors.grey.shade300,
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: Icon(
                                 Icons.remove,
                                 color: quantity > 0 ? Colors.white : Colors.grey,
-                                size: 20,
+                                size: 16,
                               ),
                             ),
                           ),
@@ -739,7 +744,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Notes', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        const Text('Notes', style: TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(
@@ -751,11 +756,12 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
             controller: _notesController,
             maxLines: 2,
             minLines: 2,
+            style: const TextStyle(fontSize: 12),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.all(12),
+              contentPadding: EdgeInsets.all(10),
               hintText: 'Enter any additional notes...',
-              hintStyle: TextStyle(color: Colors.grey),
+              hintStyle: TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ),
         ),
@@ -766,7 +772,7 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
   Widget _buildUpdateButton() {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 45,
       child: ElevatedButton(
         onPressed: isLoading ? null : _updateOrder,
         style: ElevatedButton.styleFrom(
@@ -777,10 +783,10 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
           ),
         ),
         child: isLoading 
-            ? const CircularProgressIndicator(color: Colors.white)
+            ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
             : const Text(
-                'Update Order', 
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+                'UPDATE', 
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)
               ),
       ),
     );
@@ -793,12 +799,12 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
         appBar: AppBar(
           backgroundColor: AppTheme.primaryColor,
           title: const Text(
-            'EDIT ORDER',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+            'Edit Order',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)
           ),
           centerTitle: true,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -807,8 +813,8 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Loading order data...'),
+              SizedBox(height: 12),
+              Text('Loading order data...', style: TextStyle(fontSize: 12)),
             ],
           ),
         ),
@@ -819,12 +825,12 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         title: const Text(
-          'EDIT ORDER',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+          'Edit Order',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -832,20 +838,20 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
         color: Colors.grey.shade100,
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildCustomerDateRow(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildSearchBox(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildProductsList(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildNotesField(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildUpdateButton(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -857,6 +863,9 @@ class _EditOrderScreenState extends State<EditOrderScreen> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppTheme.primaryColor,
         unselectedItemColor: Colors.grey,
+        selectedFontSize: 10,
+        unselectedFontSize: 10,
+        iconSize: 20,
         items: AppConstants.bottomNavItems.map((item) {
           return BottomNavigationBarItem(
             icon: Icon(item['icon']),

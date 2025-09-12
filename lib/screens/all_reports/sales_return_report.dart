@@ -284,7 +284,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
         
         return false;
       } else {
-        // iOS doesn't need storage permissions for app documents
+       
         return true;
       }
     } catch (e) {
@@ -841,7 +841,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
           'Sales Return Report',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -880,13 +880,13 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
               borderRadius: BorderRadius.circular(4),
               color: Colors.white,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 8), // Reduced padding
+            padding: const EdgeInsets.symmetric(horizontal: 8), 
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 isExpanded: true,
                 value: _selectedRoute,
                 icon: const Icon(Icons.arrow_drop_down, size: 20),
-                style: const TextStyle(fontSize: 12, color: Colors.black), // Smaller font
+                style: const TextStyle(fontSize: 12, color: Colors.black),
                 items: allRoutes.map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -910,7 +910,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
         ],
       ),
     ),
-    const SizedBox(width: 6), // Reduced spacing
+    const SizedBox(width: 6), 
     // From Date
     Expanded(
       flex: 4, // More space for dates
@@ -928,7 +928,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), // Reduced horizontal padding
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               width: double.infinity,
               child: Text(
                 DateFormat('dd-MM-yyyy').format(_fromDate),
@@ -940,10 +940,10 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
         ],
       ),
     ),
-    const SizedBox(width: 6), // Reduced spacing
+    const SizedBox(width: 6), 
     // To Date
     Expanded(
-      flex: 4, // More space for dates
+      flex: 4, 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -958,7 +958,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), // Reduced horizontal padding
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
               width: double.infinity,
               child: Text(
                 DateFormat('dd-MM-yyyy').format(_toDate),
@@ -975,41 +975,43 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                   const SizedBox(height: 16),
                   
                   // Excel and Print buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _exportToExcel,
-                        icon: const Icon(Icons.file_download, size: 14),
-                        label: const Text('Excel'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[800], // Dark green color
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Smaller padding
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: _printReport,
-                        icon: const Icon(Icons.print, size: 14),
-                        label: const Text('Print'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor, // Using app primary color
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Smaller padding
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
                   
                   if (mainTitle != null && mainTitle!.isNotEmpty) ...[
                     Text(
                       mainTitle!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -1043,7 +1045,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                             ? 'No sales return records found for "$searchQuery"'
                             : 'No sales return records in the selected date range.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(fontSize: 12),
                       ),
                     )
                   : ListView(
@@ -1109,7 +1111,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                 Text(
                   salesReturnTotal!.total,
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 18,
                     color: Color(0xFF4CAF50),
                     fontWeight: FontWeight.bold,
                   ),
@@ -1198,7 +1200,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                   child: Text(
                     'No: ${entry.creditNo}',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       color: Color(0xFF2196F3),
                     ),
                   ),
@@ -1206,7 +1208,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                 Text(
                   entry.date,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1216,15 +1218,27 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
             Text(
               capitalizeWords(entry.customer.customerName),
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 14,
                 color: Colors.blue.shade700,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            if (entry.customer.phone.isNotEmpty) Text(entry.customer.phone),
-            if (entry.customer.address.isNotEmpty) Text(capitalizeWords(entry.customer.address)),
-            if (entry.customer.gstNo.isNotEmpty) Text('GST No: ${entry.customer.gstNo}'),
-            Text('${entry.customer.state},${entry.customer.stateCode}'),
+            if (entry.customer.phone.isNotEmpty) Text(
+  entry.customer.phone,
+  style: const TextStyle(fontSize: 12),
+),
+if (entry.customer.address.isNotEmpty) Text(
+  capitalizeWords(entry.customer.address),
+  style: const TextStyle(fontSize: 12),
+),
+if (entry.customer.gstNo.isNotEmpty) Text(
+  'GST No: ${entry.customer.gstNo}',
+  style: const TextStyle(fontSize: 12),
+),
+Text(
+  '${entry.customer.state},${entry.customer.stateCode}',
+  style: const TextStyle(fontSize: 12),
+),
             const SizedBox(height: 8),
             const Divider(),
             const SizedBox(height: 8),
@@ -1234,8 +1248,8 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Round Off: ${entry.roundOff}'),
-                    Text('Notes: ${entry.notes}'),
+                    Text('Round Off: ${entry.roundOff}',style: TextStyle(fontSize: 12),),
+                    Text('Notes: ${entry.notes}', style: TextStyle(fontSize: 12),),
                   ],
                 ),
                 Column(
@@ -1244,7 +1258,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
                     Text(
                       entry.totalAmount,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         color: Color(0xFF4CAF50),
                         fontWeight: FontWeight.bold,
                       ),
@@ -1263,7 +1277,7 @@ class _SalesReturnReportPageState extends State<SalesReturnReportPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('Discount: ${entry.discountAmount}'),
+                Text('Discount: ${entry.discountAmount}',style: TextStyle(fontSize:12 ),),
               ],
             ),
           ],

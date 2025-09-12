@@ -32,13 +32,13 @@ class AgedInvoice {
 
   factory AgedInvoice.fromJson(Map<String, dynamic> json) {
     return AgedInvoice(
-      invId: json['inv_id'] ?? '',
-      invoiceNo: json['inv_no'] ?? '',
-      invoiceDate: json['inv_date'] ?? '',
+      invId: json['inv_id']?.toString() ?? '',
+      invoiceNo: json['inv_no']?.toString() ?? '',
+      invoiceDate: json['inv_date']?.toString() ?? '',
       dueDays: (json['due_days'] as num?)?.toInt() ?? 0,
-      invoiceAmount: json['inv_amt'] ?? '',
-      receivedAmount: json['rcp_amt'] ?? '',
-      balanceDueAmount: json['bln_due'] ?? '',
+      invoiceAmount: json['inv_amt']?.toString() ?? '',
+      receivedAmount: json['rcp_amt']?.toString() ?? '',
+      balanceDueAmount: json['bln_due']?.toString() ?? '',
     );
   }
 }
@@ -62,12 +62,12 @@ class AgedCustomers {
 
   factory AgedCustomers.fromJson(Map<String, dynamic> json) {
     return AgedCustomers(
-      name: json['custname'] ?? '',
-      address: json['address'] ?? '',
-      gstNo: json['gst_no'] ?? '',
-      phone: json['phone'] ?? '',
-      state: json['state'] ?? '',
-      stateCode: json['state_code'] ?? '',
+      name: json['custname']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      gstNo: json['gst_no']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      state: json['state']?.toString() ?? '',
+      stateCode: json['state_code']?.toString() ?? '',
     );
   }
 }
@@ -84,15 +84,34 @@ class Aged {
   });
 
   factory Aged.fromJson(Map<String, dynamic> json) {
+    List<AgedCustomers> customers = [];
+    List<AgedInvoice> invoices = [];
+    
+    // Handle customerdet - could be List or single Map
+    if (json['customerdet'] != null) {
+      if (json['customerdet'] is List) {
+        customers = (json['customerdet'] as List<dynamic>)
+            .map((cust) => AgedCustomers.fromJson(cust as Map<String, dynamic>))
+            .toList();
+      } else if (json['customerdet'] is Map) {
+        customers = [AgedCustomers.fromJson(json['customerdet'] as Map<String, dynamic>)];
+      }
+    }
+    
+    // Handle customer_invoice_due - could be List or single Map
+    if (json['customer_invoice_due'] != null) {
+      if (json['customer_invoice_due'] is List) {
+        invoices = (json['customer_invoice_due'] as List<dynamic>)
+            .map((inv) => AgedInvoice.fromJson(inv as Map<String, dynamic>))
+            .toList();
+      } else if (json['customer_invoice_due'] is Map) {
+        invoices = [AgedInvoice.fromJson(json['customer_invoice_due'] as Map<String, dynamic>)];
+      }
+    }
+    
     return Aged(
-      agedCustomers: (json['customerdet'] as List<dynamic>?)
-              ?.map((cust) => AgedCustomers.fromJson(cust))
-              .toList() ??
-          [],
-      agedInvoices: (json['customer_invoice_due'] as List<dynamic>?)
-              ?.map((inv) => AgedInvoice.fromJson(inv))
-              .toList() ??
-          [],
+      agedCustomers: customers,
+      agedInvoices: invoices,
       customerTotalBalance: (json['customer_ttl_bln_due'] as num?)?.toInt() ?? 0,
     );
   }
@@ -159,13 +178,29 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        // Debug print to see the actual structure
+        print('API Response: ${jsonEncode(data)}');
+        
         if (data['result'] == "1") {
-          final List<dynamic> agedList = data['agedcartdet'] ?? [];
-          _mainTitle = data['main_title'];
-          _subTitle = data['sub_title'];
+          _mainTitle = data['main_title']?.toString();
+          _subTitle = data['sub_title']?.toString();
+          
+          List<Aged> agedList = [];
+          
+          // Handle different possible structures for agedcartdet
+          if (data['agedcartdet'] != null) {
+            if (data['agedcartdet'] is List) {
+              agedList = (data['agedcartdet'] as List<dynamic>)
+                  .map((json) => Aged.fromJson(json as Map<String, dynamic>))
+                  .toList();
+            } else if (data['agedcartdet'] is Map) {
+              agedList = [Aged.fromJson(data['agedcartdet'] as Map<String, dynamic>)];
+            }
+          }
           
           setState(() {
-            _aged = agedList.map((json) => Aged.fromJson(json)).toList();
+            _aged = agedList;
             _filteredAged = _aged;
             _showReport = true;
           });
@@ -174,12 +209,13 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
             _showError('No aged receivables data found');
           }
         } else {
-          _showError(data['message'] ?? 'Failed to fetch.');
+          _showError(data['message']?.toString() ?? 'Failed to fetch.');
         }
       } else {
         _showError('Error: ${response.statusCode}');
       }
     } catch (error) {
+      print('Error details: $error');
       _showError('An error occurred: $error');
     } finally {
       if (mounted) {
@@ -267,28 +303,31 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AGED RECEIVABLE'),
+        title: const Text(
+          'Aged Receivable',
+          style: TextStyle(fontSize: 18),
+        ),
         centerTitle: true,
       ),
       body: Container(
         color: Colors.grey.shade50,
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Filters Section with improved alignment
+            // Compact Filters Section
             Card(
               elevation: 2,
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        // Type of Customer
-                        Expanded(
-                          flex: 1,
+                        // Customer Type
+                        Container(
+                          width: 130,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -296,57 +335,67 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                                 'Customer Type',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 10,
+                                  color: Colors.black87,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 4),
                               Container(
-                                height: 48,
-                                child: DropdownButtonFormField<String>(
-                                  decoration: InputDecoration(
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade400),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade400),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: AppTheme.primaryColor),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                                    isDense: true,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: Colors.grey.shade400,
+                                    width: 1,
                                   ),
-                                  isExpanded: true,
-                                  value: _selectedCustomerType,
-                                  onChanged: (String? newValue) {
-                                    setState(() {
-                                      _selectedCustomerType = newValue!;
-                                    });
-                                  },
-                                  items: _customerTypes
-                                      .map<DropdownMenuItem<String>>((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(
-                                        value, 
-                                        style: const TextStyle(fontSize: 14),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  }).toList(),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedCustomerType,
+                                    onChanged: (String? newValue) {
+                                      setState(() {
+                                        _selectedCustomerType = newValue!;
+                                      });
+                                    },
+                                    items: _customerTypes
+                                        .map<DropdownMenuItem<String>>((String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(
+                                          value,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.black87,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      );
+                                    }).toList(),
+                                    isExpanded: true,
+                                    icon: Icon(
+                                      Icons.arrow_drop_down,
+                                      color: AppTheme.primaryColor,
+                                      size: 16,
+                                    ),
+                                    iconSize: 16,
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.black87,
+                                    ),
+                                    dropdownColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        
                         const SizedBox(width: 12),
                         
                         // Days
-                        Expanded(
-                          flex: 1,
+                        Container(
+                          width: 130,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -354,37 +403,55 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                                 'Days',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 10,
+                                  color: Colors.black87,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 4),
                               Container(
-                                height: 48,
+                                height: 32,
                                 child: TextField(
                                   controller: _daysController,
                                   decoration: InputDecoration(
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade400),
+                                      borderRadius: BorderRadius.circular(4),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade400,
+                                        width: 1,
+                                      ),
                                     ),
                                     enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade400),
+                                      borderRadius: BorderRadius.circular(4),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade400,
+                                        width: 1,
+                                      ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: AppTheme.primaryColor),
+                                      borderRadius: BorderRadius.circular(4),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.primaryColor,
+                                        width: 1,
+                                      ),
                                     ),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 6, 
+                                      vertical: 6,
+                                    ),
                                     hintText: 'Enter days',
-                                    hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 10,
+                                    ),
                                   ),
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: <TextInputFormatter>[
                                     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
                                   ],
-                                  style: const TextStyle(fontSize: 14),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.black87,
+                                  ),
                                 ),
                               ),
                             ],
@@ -392,15 +459,15 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     
-                    // Search Button positioned at bottom right
+                    // Search Button
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         SizedBox(
-                          width: 80, // Reduced width
-                          height: 36, // Reduced height
+                          width: 70,
+                          height: 28,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _searchAgedReceivable,
                             style: ElevatedButton.styleFrom(
@@ -409,14 +476,14 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                               elevation: 2,
                               shadowColor: Colors.black26,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
                             ),
                             child: _isLoading
                                 ? const SizedBox(
-                                    height: 16,
-                                    width: 16,
+                                    height: 12,
+                                    width: 12,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -426,10 +493,8 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                                     'SEARCH',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+                                      fontSize: 8,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                           ),
                         ),
@@ -442,7 +507,7 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
             
             // Report Section
             if (_showReport && !_isLoading) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               // Report Title
               if (_mainTitle != null)
                 Center(
@@ -450,25 +515,25 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                     _mainTitle!,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              if (_subTitle != null) ...[
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    _subTitle!,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
                     textAlign: TextAlign.center,
                   ),
                 ),
+              if (_subTitle != null) ...[
+                const SizedBox(height: 6),
+                Center(
+                  child: Text(
+                    _subTitle!,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               
               // Report Data
               Expanded(
@@ -476,7 +541,7 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                     ? const Center(
                         child: Text(
                           'No data found',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       )
                     : ListView.builder(
@@ -523,11 +588,11 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
     bool hasOpeningBalance = aged.agedInvoices.any((invoice) => invoice.invoiceNo == "Opening Balance");
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.2),
@@ -546,10 +611,10 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
               aged.agedCustomers.first.name,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: 14,
               ),
             ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           
           // Improved Table with consistent row heights
           Container(
@@ -585,7 +650,7 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                               _buildVerticalDivider(),
                               _buildHeaderCell('Invoice\nNo', flex: 2),
                               _buildVerticalDivider(),
-                              _buildHeaderCell('Due\nDays', flex: 1),
+                              _buildHeaderCell('Due\nDays', flex: 2),
                               _buildVerticalDivider(),
                               _buildHeaderCell('Invoice\nAmount', flex: 2),
                               _buildVerticalDivider(),
@@ -661,7 +726,7 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                                 _buildVerticalDivider(),
                                 _buildDataCell(
                                   agedInvoice.dueDays.toString(),
-                                  flex: 1,
+                                  flex: 2,
                                   alignment: TextAlign.center,
                                 ),
                                 _buildVerticalDivider(),
@@ -695,7 +760,7 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
           
           // Balance Due row
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -703,15 +768,15 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
                   'Balance Due:',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
                   aged.customerTotalBalance.toString(),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -726,16 +791,16 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         child: Text(
           title,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 12,
+            fontSize: 9,
             height: 1.2,
           ),
           textAlign: TextAlign.center,
-          maxLines: 2,
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
       ),
@@ -752,11 +817,11 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         child: Text(
           text,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 9,
             color: color,
             fontWeight: fontWeight,
             height: 1.2,
@@ -777,13 +842,13 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         child: InkWell(
           onTap: onTap,
           child: Text(
             text,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 9,
               color: Colors.blue,
               height: 1.2,
             ),

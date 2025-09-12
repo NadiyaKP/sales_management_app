@@ -24,21 +24,32 @@ class Orders {
   final String orderDate;
   final String name;
   final String orderNo;
+  final String notes;
 
   Orders({
     required this.orderId,
     required this.orderDate,
     required this.name,
     required this.orderNo,
+    required this.notes,
   });
 
   factory Orders.fromJson(Map<String, dynamic> json) {
     return Orders(
-      orderId: json['ordid'] ?? '',
-      orderDate: json['ord_date'] ?? '',
-      name: json['cust_name'] ?? '',
-      orderNo: json['ord_no'] ?? '',
+      orderId: _safeString(json['ordid']),
+      orderDate: _safeString(json['ord_date']),
+      name: _safeString(json['cust_name']),
+      orderNo: _safeString(json['ord_no']),
+      notes: _safeString(json['notes']),
     );
+  }
+
+  // Helper method to safely convert any value to String
+  static String _safeString(dynamic value) {
+    if (value == null) {
+      return '';
+    }
+    return value.toString();
   }
 }
 
@@ -93,8 +104,8 @@ class _OrdersPageState extends State<OrdersPage> {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          "unid": unid,
-          "slex": slex,
+          "unid": unid ?? '',
+          "slex": slex ?? '',
           "srch": searchQuery,
           "page": currentPage.toString(),
         }),
@@ -103,23 +114,42 @@ class _OrdersPageState extends State<OrdersPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['result'] == "1") {
-          ordersTotal = data['ttlorders'];
+          // Safe parsing of total orders
+          ordersTotal = _safeInt(data['ttlorders']);
           final List<dynamic> ordersList = data['orderdet'] ?? [];
+          
           setState(() {
             ordersTotal = ordersTotal;
-            _orders = ordersList.map((json) => Orders.fromJson(json)).toList();
+            _orders = ordersList.map((json) {
+              try {
+                return Orders.fromJson(json);
+              } catch (e) {
+                debugPrint('Error parsing order: $e');
+                debugPrint('Order data: $json');
+                // Return a default order object to prevent crashes
+                return Orders(
+                  orderId: '',
+                  orderDate: '',
+                  name: 'Unknown',
+                  orderNo: '',
+                  notes: '',
+                );
+              }
+            }).toList();
             filteredOrders = _orders;
           });
+          
           if (ordersList.isEmpty) {
             _showError('No Orders data found');
           }
         } else {
-          _showError(data['message'] ?? 'Failed to fetch orders.');
+          _showError(data['message']?.toString() ?? 'Failed to fetch orders.');
         }
       } else {
         _showError('Error: ${response.statusCode}');
       }
     } catch (error) {
+      debugPrint('Fetch orders error: $error');
       _showError('An error occurred: $error');
     } finally {
       if (mounted) {
@@ -128,6 +158,16 @@ class _OrdersPageState extends State<OrdersPage> {
         });
       }
     }
+  }
+
+  // Helper method to safely convert any value to int
+  int _safeInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
   }
 
   void _filterOrders() async {
@@ -183,43 +223,32 @@ class _OrdersPageState extends State<OrdersPage> {
         if (data['result'] == "1" && data['permissions'] != null) {
           final permissions = data['permissions'];
           setState(() {
-            orderAdd = permissions['order_add'] ?? 'no';
-            orderEdit = permissions['order_edit'] ?? 'no';
-            orderView = permissions['order_view'] ?? 'no';
-            orderReport = permissions['order_report'] ?? 'no';
-            orderDelete = permissions['order_delete'] ?? 'no';
+            orderAdd = permissions['order_add']?.toString() ?? 'no';
+            orderEdit = permissions['order_edit']?.toString() ?? 'no';
+            orderView = permissions['order_view']?.toString() ?? 'no';
+            orderReport = permissions['order_report']?.toString() ?? 'no';
+            orderDelete = permissions['order_delete']?.toString() ?? 'no';
           });
         } else {
-          // Set default permissions if API call fails
-          setState(() {
-            orderAdd = 'yes';
-            orderEdit = 'yes';
-            orderView = 'yes';
-            orderReport = 'yes';
-            orderDelete = 'yes';
-          });
+          _setDefaultPermissions();
         }
       } else {
-        // Set default permissions if API call fails
-        setState(() {
-          orderAdd = 'yes';
-          orderEdit = 'yes';
-          orderView = 'yes';
-          orderReport = 'yes';
-          orderDelete = 'yes';
-        });
+        _setDefaultPermissions();
       }
     } catch (e) {
       debugPrint('Error fetching permissions: $e');
-      // Set default permissions if there's an error
-      setState(() {
-        orderAdd = 'yes';
-        orderEdit = 'yes';
-        orderView = 'yes';
-        orderReport = 'yes';
-        orderDelete = 'yes';
-      });
+      _setDefaultPermissions();
     }
+  }
+
+  void _setDefaultPermissions() {
+    setState(() {
+      orderAdd = 'yes';
+      orderEdit = 'yes';
+      orderView = 'yes';
+      orderReport = 'yes';
+      orderDelete = 'yes';
+    });
   }
 
   Future<Map<String, dynamic>> _deleteOrderData({String? orderId}) async {
@@ -237,7 +266,7 @@ class _OrdersPageState extends State<OrdersPage> {
         "unid": unid,
         "slex": slex,
         "action": 'delete',
-        "ordid": orderId,
+        "ordid": orderId ?? '',
       };
 
       final response = await http.post(
@@ -247,7 +276,11 @@ class _OrdersPageState extends State<OrdersPage> {
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final responseData = json.decode(response.body);
+        return {
+          "result": responseData['result']?.toString() ?? "0",
+          "message": responseData['message']?.toString() ?? "Unknown error"
+        };
       } else {
         return {"result": "0", "message": "Failed to delete order"};
       }
@@ -264,14 +297,6 @@ class _OrdersPageState extends State<OrdersPage> {
       content: Text(message),
       backgroundColor: Colors.red,
     ));
-  }
-
-  List<Orders> get currentPageOrders {
-    final start = (currentPage - 1) * itemsPerPage;
-    final end = (start + itemsPerPage > filteredOrders.length)
-        ? filteredOrders.length
-        : start + itemsPerPage;
-    return filteredOrders.sublist(start, end);
   }
 
   void _onPageChanged(int newPage) {
@@ -328,12 +353,10 @@ class _OrdersPageState extends State<OrdersPage> {
     );
 
     if (result != null && result is Map<String, dynamic>) {
-      fetchOrders(); // Refresh orders after saving
+      fetchOrders();
     }
   }
 
-  // Updated method to use EditOrderScreen
-  
   void _navigateToEditOrder(Orders order) async {
     if (!context.mounted) return;
     
@@ -344,7 +367,6 @@ class _OrdersPageState extends State<OrdersPage> {
       ),
     );
 
-    // Refresh orders after editing (whether successful or not)
     if (result != null || context.mounted) {
       fetchOrders();
     }
@@ -393,7 +415,7 @@ class _OrdersPageState extends State<OrdersPage> {
                     ),
                   );
                 } else {
-                  _showError(result['message']);
+                  _showError(result['message'] ?? 'Failed to delete order');
                 }
                 if (dialogContext.mounted) {
                   Navigator.pop(dialogContext);
@@ -408,12 +430,40 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
+  DateTime? _parseDate(String dateStr) {
+    try {
+      if (dateStr.isEmpty) return null;
+      
+      if (dateStr.contains('-')) {
+        return DateTime.parse(dateStr);
+      } else if (dateStr.contains('/')) {
+        List<String> parts = dateStr.split('/');
+        if (parts.length == 3) {
+          return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        }
+      }
+    } catch (e) {
+      debugPrint('Date parsing error: $e for date: $dateStr');
+    }
+    return null;
+  }
+
+  String _formatDate(String dateStr) {
+    if (dateStr.isEmpty) return '';
+    
+    DateTime? date = _parseDate(dateStr);
+    if (date != null) {
+      return DateFormat('dd-MM-yyyy').format(date);
+    }
+    return dateStr;
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (isLoading && filteredOrders.isEmpty) {
+    if (isLoading && _orders.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('ORDERS'),
+          title: const Text('Orders'),
           backgroundColor: AppTheme.primaryColor,
           centerTitle: true,
         ),
@@ -423,116 +473,208 @@ class _OrdersPageState extends State<OrdersPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ORDERS'),
+        title: const Text('Orders'),
         backgroundColor: AppTheme.primaryColor,
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: _showSearchDialog,
-          ),
+          )
         ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: currentPageOrders.isEmpty
-                ? const Center(
-                    child: Text(
-                      "No orders found.",
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  )
+            child: _orders.isEmpty
+                ? const Center(child: Text("No orders found.", style: TextStyle(fontSize: 16)))
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: currentPageOrders.length,
+                    padding: const EdgeInsets.all(10),
+                    itemCount: _orders.length,
                     itemBuilder: (context, index) {
-                      final order = currentPageOrders[index];
+                      final order = _orders[index];
                       return Card(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        elevation: 3,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                        elevation: 1.5,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                          ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Order No: ${order.orderNo}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              // Header Section with Order Number and Date
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(8),
+                                    topRight: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Order No: ${order.orderNo.isEmpty ? 'N/A' : order.orderNo}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color.fromARGB(255, 5, 38, 76),
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          order.orderDate.isEmpty ? 'N/A' : _formatDate(order.orderDate),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 10),
-                              _buildRow('Name', order.name),
-                              _buildRow('Date', order.orderDate),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (orderView == "yes")
-                                    ElevatedButton.icon(
-                                      icon: const Icon(Icons.visibility, size: 14, color: Colors.white),
-                                      label: const Text('View', style: TextStyle(color: Colors.white, fontSize: 11)),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color.fromARGB(255, 7, 63, 91),
-                                        foregroundColor: Colors.white,
-                                        elevation: 1,
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        minimumSize: const Size(0, 28),
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
+                              
+                              // Content Section
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Customer Name Section
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.person,
+                                          size: 12,
+                                          color: Colors.grey.shade600,
                                         ),
-                                      ),
-                                      onPressed: () {
-                                        _navigateToViewOrder(order);
-                                      },
-                                    ),
-                                  if (orderView == "yes") const SizedBox(width: 6),
-                                  if (orderEdit == "yes")
-                                    ElevatedButton.icon(
-                                      icon: const Icon(Icons.edit, size: 14, color: Colors.white),
-                                      label: const Text('Edit', style: TextStyle(color: Colors.white, fontSize: 11)),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color.fromARGB(255, 7, 63, 91),
-                                        foregroundColor: Colors.white,
-                                        elevation: 1,
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        minimumSize: const Size(0, 28),
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            order.name.isEmpty ? 'Unknown Customer' : order.name,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                      onPressed: () {
-                                        _navigateToEditOrder(order);
-                                      },
+                                      ],
                                     ),
-                                  if (orderEdit == "yes") const SizedBox(width: 6),
-                                  if (orderDelete == "yes")
-                                    ElevatedButton.icon(
-                                      icon: const Icon(Icons.delete, size: 14, color: Colors.white),
-                                      label: const Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11)),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red.shade600,
-                                        foregroundColor: Colors.white,
-                                        elevation: 1,
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        minimumSize: const Size(0, 28),
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
+                                    
+                                    // Notes Section - Only show if notes exist
+                                    if (order.notes.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Icon(
+                                            Icons.note,
+                                            size: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              order.notes,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.normal,
+                                                color: Colors.grey.shade700,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      onPressed: () {
-                                        _deleteOrder(order);
-                                      },
+                                    ],
+                                    
+                                    const SizedBox(height: 8),
+                                    
+                                    // Action Buttons Section
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        if (orderView == "yes")
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            onPressed: () {
+                                              _navigateToViewOrder(order);
+                                            },
+                                            child: const Icon(Icons.visibility, size: 12, color: Colors.white),
+                                          ),
+                                        if (orderView == "yes") const SizedBox(width: 6),
+                                        if (orderEdit == "yes")
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            onPressed: () {
+                                              _navigateToEditOrder(order);
+                                            },
+                                            child: const Icon(Icons.edit, size: 12, color: Colors.white),
+                                          ),
+                                        if (orderEdit == "yes") const SizedBox(width: 6),
+                                        if (orderDelete == "yes")
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red.shade600,
+                                              foregroundColor: Colors.white,
+                                              elevation: 1,
+                                              padding: const EdgeInsets.all(6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              minimumSize: const Size(0, 0),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            ),
+                                            onPressed: () {
+                                              _deleteOrder(order);
+                                            },
+                                            child: const Icon(Icons.delete, size: 12, color: Colors.white),
+                                          ),
+                                      ],
                                     ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -558,30 +700,6 @@ class _OrdersPageState extends State<OrdersPage> {
       ) : null,
       bottomNavigationBar: const BottomNavigationButton(
         selectedIndex: 0, 
-      ),
-    );
-  }
-
-  Widget _buildRow(String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text(
-            '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: color ?? Colors.black87,
-              ),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
       ),
     );
   }

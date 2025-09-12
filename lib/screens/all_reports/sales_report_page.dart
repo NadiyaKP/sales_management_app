@@ -921,7 +921,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
           'Sales Report',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -960,13 +960,13 @@ class _SalesReportPageState extends State<SalesReportPage> {
               borderRadius: BorderRadius.circular(4),
               color: Colors.white,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 8), // Reduced padding
+            padding: const EdgeInsets.symmetric(horizontal: 8), 
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 isExpanded: true,
                 value: _selectedRoute,
                 icon: const Icon(Icons.arrow_drop_down, size: 20),
-                style: const TextStyle(fontSize: 12, color: Colors.black), // Smaller font
+                style: const TextStyle(fontSize: 12, color: Colors.black), 
                 items: allRoutes.map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -990,7 +990,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
         ],
       ),
     ),
-    const SizedBox(width: 6), // Reduced spacing
+    const SizedBox(width: 6), 
     // From Date
     Expanded(
       flex: 4, // More space for dates
@@ -1008,7 +1008,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), // Reduced horizontal padding
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               width: double.infinity,
               child: Text(
                 DateFormat('dd-MM-yyyy').format(_fromDate),
@@ -1020,10 +1020,10 @@ class _SalesReportPageState extends State<SalesReportPage> {
         ],
       ),
     ),
-    const SizedBox(width: 6), // Reduced spacing
+    const SizedBox(width: 6), 
     // To Date
     Expanded(
-      flex: 4, // More space for dates
+      flex: 4, 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1038,7 +1038,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), // Reduced horizontal padding
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
               width: double.infinity,
               child: Text(
                 DateFormat('dd-MM-yyyy').format(_toDate),
@@ -1053,42 +1053,42 @@ class _SalesReportPageState extends State<SalesReportPage> {
   ],
 ),
                   
-                  // Excel and Print buttons
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _exportToExcel,
-                        icon: const Icon(Icons.file_download, size: 14),
-                        label: const Text('Excel'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[800],
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: _printReport,
-                        icon: const Icon(Icons.print, size: 14),
-                        label: const Text('Print'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
                   if (mainTitle != null && mainTitle!.isNotEmpty) ...[
                     Text(
                       mainTitle!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -1121,7 +1121,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
                             ? 'No sales records found for "$searchQuery"'
                             : 'No sales records in the selected date range.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(fontSize: 12),
                       ),
                     )
                   : ListView(
@@ -1179,7 +1179,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
                 Text(
                   filteredSaleTotal!.totalAmount,
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 18,
                     color: Color(0xFF4CAF50),
                     fontWeight: FontWeight.bold,
                   ),
@@ -1265,7 +1265,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
                   child: Text(
                     report.invoiceNo,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       color: Color(0xFF2196F3),
                     ),
                   ),
@@ -1273,7 +1273,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
                 Text(
                   report.date,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1283,20 +1283,29 @@ class _SalesReportPageState extends State<SalesReportPage> {
             Text(
               capitalizeWords(report.customer.customerName),
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 14,
                 color: Colors.blue.shade700,
                 fontWeight: FontWeight.w500,
               ),
             ),
             if (report.customer.phone.isNotEmpty) ...[
-              Text(report.customer.phone),
-            ],
-            if (report.customer.address.isNotEmpty) ...[
-              Text(capitalizeWords(report.customer.address)),
-            ],
-            if (report.customer.gstNo.isNotEmpty) ...[
-              Text('GST No: ${report.customer.gstNo}'),
-            ],
+  Text(
+    report.customer.phone,
+    style: const TextStyle(fontSize: 12),
+  ),
+],
+if (report.customer.address.isNotEmpty) ...[
+  Text(
+    capitalizeWords(report.customer.address),
+    style: const TextStyle(fontSize: 12),
+  ),
+],
+if (report.customer.gstNo.isNotEmpty) ...[
+  Text(
+    'GST No: ${report.customer.gstNo}',
+    style: const TextStyle(fontSize: 12),
+  ),
+],
             Text('${report.customer.state},${report.customer.stateCode}'),
             const SizedBox(height: 8),
             const Divider(),
@@ -1353,7 +1362,7 @@ class _SalesReportPageState extends State<SalesReportPage> {
                     Text(
                       report.totalAmount,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         color: Color(0xFF4CAF50),
                         fontWeight: FontWeight.bold,
                       ),

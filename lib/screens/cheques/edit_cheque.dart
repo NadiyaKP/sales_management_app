@@ -25,9 +25,8 @@ class _EditChequePageState extends State<EditChequePage> {
   final TextEditingController _chequeDateController = TextEditingController();
   final TextEditingController _chequeNoController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _customerSearchController = TextEditingController(); // NEW: Customer search controller
+  final TextEditingController _customerSearchController = TextEditingController();
 
-  // Customer data
   List<String> customerNames = [];
   List<String> filteredCustomerNames = []; 
   String? selectedCustomer;
@@ -37,7 +36,6 @@ class _EditChequePageState extends State<EditChequePage> {
   bool _isLoadingCustomers = true;
   ApiServices apiServices = ApiServices();
 
-  // Customer dropdown state
   bool _showCustomerDropdown = false;
   final FocusNode _customerFocusNode = FocusNode();
 
@@ -54,21 +52,19 @@ class _EditChequePageState extends State<EditChequePage> {
     _chequeDateController.dispose();
     _chequeNoController.dispose();
     _amountController.dispose();
-    _customerSearchController.removeListener(_filterCustomers); //Remove customer filter listener
-    _customerSearchController.dispose(); //Dispose customer search controller
+    _customerSearchController.removeListener(_filterCustomers);
+    _customerSearchController.dispose();
     _customerFocusNode.removeListener(_onCustomerFocusChange); 
     _customerFocusNode.dispose(); 
     super.dispose();
   }
 
-  // Customer focus change handler
   void _onCustomerFocusChange() {
     setState(() {
       _showCustomerDropdown = _customerFocusNode.hasFocus && filteredCustomerNames.isNotEmpty;
     });
   }
 
-  // Filter customers based on search text
   void _filterCustomers() {
     String query = _customerSearchController.text.toLowerCase();
     setState(() {
@@ -83,7 +79,6 @@ class _EditChequePageState extends State<EditChequePage> {
     });
   }
 
-  // Handle customer selection from dropdown
   void _selectCustomer(String customerName) {
     setState(() {
       selectedCustomer = customerName;
@@ -100,10 +95,7 @@ class _EditChequePageState extends State<EditChequePage> {
     });
 
     try {
-      // Load customers first
       await _loadCustomers();
-
-      // Then initialize form fields
       _initializeForm();
     } catch (e) {
       _showError('Failed to load data: $e');
@@ -122,7 +114,7 @@ class _EditChequePageState extends State<EditChequePage> {
         customerIdMap = {
           for (var e in customers) e["cust_name"]!: e["custid"]!
         };
-        filteredCustomerNames = List.from(customerNames); // NEW: Initialize filtered list
+        filteredCustomerNames = List.from(customerNames);
         _isLoadingCustomers = false;
       });
     } catch (e) {
@@ -134,11 +126,9 @@ class _EditChequePageState extends State<EditChequePage> {
   }
 
   void _initializeForm() {
-    // Initialize form fields with existing cheque data
     _chequeNoController.text = widget.chequeData['chq_no'] ?? '';
     _amountController.text = _parseAmount(widget.chequeData['chq_amt'] ?? '');
 
-    // Parse and format the date
     String dateStr = widget.chequeData['chq_date'] ?? '';
     if (dateStr.isNotEmpty) {
       try {
@@ -156,29 +146,24 @@ class _EditChequePageState extends State<EditChequePage> {
       _chequeDateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
     }
 
-    // Set customer data
     String customerName = widget.chequeData['custname'] ?? '';
+    String customerId = widget.chequeData['custid'] ?? '';
+    
     if (customerName.isNotEmpty) {
-      _customerSearchController.text = customerName; //Set customer search controller
+      _customerSearchController.text = customerName;
       
-      // Check if customer exists in the loaded customers
-      if (customerNames.contains(customerName)) {
-        setState(() {
-          selectedCustomer = customerName;
-          selectedCustId = customerIdMap[customerName];
-        });
-      } else {
-        // If customer doesn't exist in dropdown, add it temporarily
+      // Check if customer exists in our list, if not add it
+      if (!customerNames.contains(customerName) && customerId.isNotEmpty) {
         setState(() {
           customerNames.add(customerName);
-          String tempCustId = widget.chequeData['custid'] ?? '';
-          if (tempCustId.isNotEmpty) {
-            customerIdMap[customerName] = tempCustId;
-            selectedCustId = tempCustId;
-          }
-          selectedCustomer = customerName;
+          customerIdMap[customerName] = customerId;
         });
       }
+      
+      setState(() {
+        selectedCustomer = customerName;
+        selectedCustId = customerIdMap[customerName] ?? customerId;
+      });
     }
   }
 
@@ -224,9 +209,18 @@ class _EditChequePageState extends State<EditChequePage> {
   }
 
   Future<void> _updateCheque() async {
-    // Ensure customer is selected
     if (selectedCustomer == null || selectedCustId == null) {
       _showError('Customer must be selected.');
+      return;
+    }
+
+    if (_chequeNoController.text.isEmpty) {
+      _showError('Cheque number is required.');
+      return;
+    }
+
+    if (_amountController.text.isEmpty) {
+      _showError('Amount is required.');
       return;
     }
 
@@ -245,19 +239,26 @@ class _EditChequePageState extends State<EditChequePage> {
         return;
       }
       
+      // Format the request body to match the expected API format
       Map<String, dynamic> requestBody = {
         "unid": unid,
         "slex": slex,
         "action": "update",
         "chqid": widget.chequeData['chqid'] ?? '',
-        "custid": selectedCustId ?? '',
-        "cust_name": selectedCustomer ?? '',
         "chq_no": _chequeNoController.text.trim(),
+        "cust_name": selectedCustomer ?? '',
+        "custid": selectedCustId ?? '',
         "chq_date": _chequeDateController.text.trim(),
         "chq_amt": _amountController.text.trim(),
       };
 
-      debugPrint('Request body: ${jsonEncode(requestBody)}');
+      // Print API request details
+      debugPrint('=== API REQUEST ===');
+      debugPrint('URL: $url/action/cheques.php');
+      debugPrint('Method: POST');
+      debugPrint('Headers: {"Content-Type": "application/json"}');
+      debugPrint('Body: ${jsonEncode(requestBody)}');
+      debugPrint('===================');
       
       final response = await http.post(
         Uri.parse('$url/action/cheques.php'),
@@ -265,13 +266,17 @@ class _EditChequePageState extends State<EditChequePage> {
         body: jsonEncode(requestBody),
       );
 
-      debugPrint('Response status: ${response.statusCode}');
-      debugPrint('Response body: ${response.body}');
+      // Print API response details
+      debugPrint('=== API RESPONSE ===');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Headers: ${response.headers}');
+      debugPrint('Body: ${response.body}');
+      debugPrint('====================');
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
         if (result["result"] == "1") {
-          _showSuccessMessage('Cheque updated successfully!');
+          _showSuccessMessage(result["message"] ?? 'Cheque updated successfully!');
           Navigator.pop(context, true);
         } else {
           _showError(result["message"] ?? "Failed to update cheque.");
@@ -315,8 +320,8 @@ class _EditChequePageState extends State<EditChequePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Customer Name', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 8),
+        const Text('Customer Name', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -325,16 +330,16 @@ class _EditChequePageState extends State<EditChequePage> {
           ),
           child: _isLoadingCustomers
               ? const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 18,
+                        height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      SizedBox(width: 12),
-                      Text('Loading customers...'),
+                      SizedBox(width: 10),
+                      Text('Loading customers...', style: TextStyle(fontSize: 12)),
                     ],
                   ),
                 )
@@ -343,14 +348,15 @@ class _EditChequePageState extends State<EditChequePage> {
                     TextField(
                       controller: _customerSearchController,
                       focusNode: _customerFocusNode,
+                      style: const TextStyle(fontSize: 12),
                       decoration: const InputDecoration(
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         hintText: 'Type to search customer...',
-                        suffixIcon: Icon(Icons.search, color: Colors.grey),
+                        hintStyle: TextStyle(fontSize: 12),
+                        suffixIcon: Icon(Icons.search, color: Colors.grey, size: 18),
                       ),
                       onChanged: (value) {
-                        // Update selected customer if exact match
                         if (customerNames.contains(value)) {
                           setState(() {
                             selectedCustomer = value;
@@ -364,10 +370,9 @@ class _EditChequePageState extends State<EditChequePage> {
                         }
                       },
                     ),
-                    // NEW: Customer dropdown
                     if (_showCustomerDropdown && filteredCustomerNames.isNotEmpty)
                       Container(
-                        constraints: const BoxConstraints(maxHeight: 150),
+                        constraints: const BoxConstraints(maxHeight: 130),
                         decoration: BoxDecoration(
                           border: Border(
                             top: BorderSide(color: Colors.grey.shade300),
@@ -382,7 +387,7 @@ class _EditChequePageState extends State<EditChequePage> {
                             return InkWell(
                               onTap: () => _selectCustomer(customerName),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
@@ -394,12 +399,12 @@ class _EditChequePageState extends State<EditChequePage> {
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.person, color: Colors.grey, size: 16),
-                                    const SizedBox(width: 8),
+                                    const Icon(Icons.person, color: Colors.grey, size: 14),
+                                    const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
                                         customerName,
-                                        style: const TextStyle(fontSize: 14),
+                                        style: const TextStyle(fontSize: 12),
                                       ),
                                     ),
                                   ],
@@ -414,10 +419,10 @@ class _EditChequePageState extends State<EditChequePage> {
         ),
         if (selectedCustomer == null && !_isLoadingCustomers)
           const Padding(
-            padding: EdgeInsets.only(top: 8.0, left: 12.0),
+            padding: EdgeInsets.only(top: 6.0, left: 12.0),
             child: Text(
               'Please select a customer',
-              style: TextStyle(color: Colors.red, fontSize: 12),
+              style: TextStyle(color: Colors.red, fontSize: 10),
             ),
           ),
       ],
@@ -428,8 +433,8 @@ class _EditChequePageState extends State<EditChequePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Cheque Date', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 8),
+        const Text('Cheque Date', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -439,11 +444,12 @@ class _EditChequePageState extends State<EditChequePage> {
           child: TextField(
             controller: _chequeDateController,
             readOnly: true,
+            style: const TextStyle(fontSize: 12),
             decoration: InputDecoration(
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               suffixIcon: IconButton(
-                icon: const Icon(Icons.calendar_today),
+                icon: const Icon(Icons.calendar_today, size: 18),
                 onPressed: () => _selectDate(context),
               ),
             ),
@@ -458,8 +464,8 @@ class _EditChequePageState extends State<EditChequePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Cheque Number', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 8),
+        const Text('Cheque Number', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -468,10 +474,12 @@ class _EditChequePageState extends State<EditChequePage> {
           ),
           child: TextField(
             controller: _chequeNoController,
+            style: const TextStyle(fontSize: 12),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               hintText: 'Enter cheque number',
+              hintStyle: TextStyle(fontSize: 12),
             ),
           ),
         ),
@@ -483,8 +491,8 @@ class _EditChequePageState extends State<EditChequePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Amount', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        const SizedBox(height: 8),
+        const Text('Amount', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -494,11 +502,12 @@ class _EditChequePageState extends State<EditChequePage> {
           child: TextField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontSize: 12),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               hintText: 'Enter amount',
-              prefixText: '₹ ',
+              hintStyle: TextStyle(fontSize: 12),
             ),
           ),
         ),
@@ -513,8 +522,8 @@ class _EditChequePageState extends State<EditChequePage> {
         appBar: AppBar(
           backgroundColor: AppTheme.primaryColor,
           title: const Text(
-            'EDIT CHEQUE',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+            'Edit Cheque',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
           ),
           centerTitle: true,
           leading: IconButton(
@@ -528,7 +537,7 @@ class _EditChequePageState extends State<EditChequePage> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Loading cheque data...'),
+              Text('Loading cheque data...', style: TextStyle(fontSize: 12)),
             ],
           ),
         ),
@@ -539,8 +548,8 @@ class _EditChequePageState extends State<EditChequePage> {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         title: const Text(
-          'EDIT CHEQUE',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
+          'Edit Cheque',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)
         ),
         centerTitle: true,
         leading: IconButton(
@@ -559,16 +568,16 @@ class _EditChequePageState extends State<EditChequePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildCustomerField(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   _buildDateField(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   _buildChequeNumberField(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   _buildAmountField(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
-                    height: 50,
+                    height: 45,
                     child: ElevatedButton(
                       onPressed: isLoading ? null : _updateCheque,
                       style: ElevatedButton.styleFrom(
@@ -579,10 +588,14 @@ class _EditChequePageState extends State<EditChequePage> {
                         ),
                       ),
                       child: isLoading 
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
                           : const Text(
-                              'UPDATE CHEQUE', 
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+                              'UPDATE', 
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)
                             ),
                     ),
                   ),

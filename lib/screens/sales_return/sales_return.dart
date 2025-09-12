@@ -200,18 +200,18 @@ class _SalesReturnPageState extends State<SalesReturnPage> {
   String _formatDate(String dateStr) {
     DateTime? date = _parseDate(dateStr);
     if (date != null) {
-      return DateFormat.yMMMMd().format(date);
+      return DateFormat('dd-MM-yyyy').format(date);
     }
     return dateStr;
   }
 
   String _formatAmount(String amount) {
-    if (amount.isEmpty || amount == '0') return '₹0.00';
+    if (amount.isEmpty || amount == '0') return '0.00';
     try {
       final double value = double.parse(amount);
-      return '₹${value.toStringAsFixed(2)}';
+      return value.toStringAsFixed(2);
     } catch (_) {
-      return '₹$amount';
+      return amount;
     }
   }
 
@@ -220,7 +220,7 @@ class _SalesReturnPageState extends State<SalesReturnPage> {
     if (isLoading && _salesReturns.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('SALES RETURN'),
+          title: const Text('Sales Return'),
           backgroundColor: AppTheme.primaryColor,
           centerTitle: true,
         ),
@@ -230,7 +230,7 @@ class _SalesReturnPageState extends State<SalesReturnPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SALES RETURN'),
+        title: const Text('Sales Return'),
         backgroundColor: AppTheme.primaryColor,
         centerTitle: true,
         actions: [
@@ -246,60 +246,208 @@ class _SalesReturnPageState extends State<SalesReturnPage> {
             child: _salesReturns.isEmpty
                 ? const Center(child: Text("No sales returns found.", style: TextStyle(fontSize: 16)))
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(10),
                     itemCount: _salesReturns.length,
                     itemBuilder: (context, index) {
                       final salesReturn = _salesReturns[index];
                       return Card(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 3,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 1.5,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                          ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Credit No: ${salesReturn.creditNoteNo}',
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 10),
-                              _buildRow('Customer', salesReturn.name),
-                              _buildRow('Date', _formatDate(salesReturn.date)),
-                              if (salesReturn.typeofCreditNote.isNotEmpty)
-                                _buildRow('Type', salesReturn.typeofCreditNote),
-                              _buildRow('Notes', salesReturn.notes.isNotEmpty ? salesReturn.notes : 'N/A'),
-                              _buildRow('Amount', _formatAmount(salesReturn.totalAmount),
-                                  color: Colors.green.shade700),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  ElevatedButton.icon(
-                                    icon: const Icon(Icons.print, size: 14, color: Colors.white),
-                                    label: const Text('Credit Note', style: TextStyle(color: Colors.white, fontSize: 12)),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.primaryColor,
-                                      foregroundColor: Colors.white,
-                                      elevation: 2,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(6),
+                              // Header Section with Credit Note Number and Date
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(8),
+                                    topRight: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Credit No: ${salesReturn.creditNoteNo}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color.fromARGB(255, 5, 38, 76),
+                                        ),
                                       ),
-                                      minimumSize: const Size(0, 0),
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     ),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => SalesReturnViewScreen(
-                                            crdId: salesReturn.crdId,
-                                            typeofCreditNote: salesReturn.typeofCreditNote,
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          _formatDate(salesReturn.date),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade700,
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Content Section
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  children: [
+                                    // Customer Name Section
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.person,
+                                          size: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            salesReturn.name,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    const SizedBox(height: 8),
+                                    
+                                    Row(
+                                      children: [
+                                        // Details Section (Type and Notes)
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade50,
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                // Type Section
+                                                if (salesReturn.typeofCreditNote.isNotEmpty)
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          'Type',
+                                                          style: TextStyle(
+                                                            fontSize: 9,
+                                                            color: Colors.grey.shade600,
+                                                            fontWeight: FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(height: 2),
+                                                        Text(
+                                                          salesReturn.typeofCreditNote,
+                                                          style: const TextStyle(
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: Colors.black,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                
+                                                // Divider
+                                                Container(
+                                                  height: 24,
+                                                  width: 1,
+                                                  color: Colors.grey.shade300,
+                                                ),
+                                                
+                                                // Amount Section
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                                    children: [
+                                                      Text(
+                                                        'Amount',
+                                                        style: TextStyle(
+                                                          fontSize: 9,
+                                                          color: Colors.grey.shade600,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                      Text(
+                                                        _formatAmount(salesReturn.totalAmount),
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Colors.green.shade700,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        
+                                        const SizedBox(width: 10),
+                                        
+                                        // Action Button Section
+                                        ElevatedButton.icon(
+                                          icon: const Icon(Icons.visibility, size: 10, color: Colors.white),
+                                          label: const Text('Credit Note', style: TextStyle(color: Colors.white, fontSize: 9)),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                            foregroundColor: Colors.white,
+                                            elevation: 1,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            minimumSize: const Size(0, 0),
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          ),
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => SalesReturnViewScreen(
+                                                  crdId: salesReturn.crdId,
+                                                  typeofCreditNote: salesReturn.typeofCreditNote,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -319,24 +467,6 @@ class _SalesReturnPageState extends State<SalesReturnPage> {
         ],
       ),
       bottomNavigationBar: const BottomNavigationButton(selectedIndex: 0),
-    );
-  }
-
-  Widget _buildRow(String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w500)),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(fontWeight: FontWeight.w600, color: color ?? Colors.black87),
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

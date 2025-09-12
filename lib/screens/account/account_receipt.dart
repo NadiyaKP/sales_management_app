@@ -189,7 +189,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
 
   String _formatAmount(String amount) {
     try {
-      // Remove commas if present (like "1,000.00")
+      // Remove commas if present
       String cleanAmount = amount.replaceAll(',', '');
       double value = double.parse(cleanAmount);
       return value.toStringAsFixed(2);
@@ -745,42 +745,43 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
                 const SizedBox(height: 8),
                 
                 // Excel and Print buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _exportToExcel,
-                      icon: const Icon(Icons.file_download, size: 14),
-                      label: const Text('Excel'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[800],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        textStyle: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: _printReport,
-                      icon: const Icon(Icons.print, size: 14),
-                      label: const Text('Print'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        textStyle: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 8),
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
                 
                 // Customer name and date range
                 Text(
                   currentCustomerName ?? 'Receipt Report',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -801,7 +802,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
               child: Text(
                 headerTitle!,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
@@ -833,14 +834,14 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
                   const Text(
                     'Total Amount:',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     totalAmount!,
                     style: const TextStyle(
-                      fontSize: 24,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
@@ -867,13 +868,13 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
                           currentCustomerName != null
                               ? 'No receipt records found for ${currentCustomerName}\nin the selected date range.'
                               : 'No receipt records found for the selected date range.',
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '${DateFormat('dd-MM-yyyy').format(_fromDate)} to ${DateFormat('dd-MM-yyyy').format(_toDate)}',
-                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
                       ],
                     ),
@@ -910,7 +911,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
                                     child: Text(
                                       'No: ${record.receiptNo}',
                                       style: const TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.blue,
                                       ),
@@ -919,7 +920,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
                                   Text(
                                     record.paidDate,
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 12,
                                       color: Colors.grey,
                                     ),
                                   ),
@@ -929,7 +930,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
                               Text(
                                 record.paidAmount,
                                 style: const TextStyle(
-                                  fontSize: 22,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.green,
                                 ),
@@ -948,7 +949,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
                                 Text(
                                   'Notes: ${record.notes}',
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 12,
                                     color: Colors.black87,
                                   ),
                                 ),
@@ -979,7 +980,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
+import '../common/bottom_navigation_button.dart';
+import '../common/pagination.dart';
 import 'home_page.dart';
 import 'report_page.dart';
 
@@ -28,13 +31,13 @@ class ReceivedAmount {
 
   factory ReceivedAmount.fromJson(Map<String, dynamic> json) {
     return ReceivedAmount(
-      rcpId: json['rcpid'] ?? '',
-      rcpNo: json['rcp_no'] ?? '',
-      customerName: json['custname'] ?? '',
-      rcpDate: json['rcp_date'] ?? '',
-      walletName: json['wlt_name'] ?? '',
-      notes: json['notes'] ?? '',
-      rcpAmount: json['rcp_amt'] ?? '',
+      rcpId: json['rcpid']?.toString() ?? '',
+      rcpNo: json['rcp_no']?.toString() ?? '',
+      customerName: json['custname']?.toString() ?? '',
+      rcpDate: json['rcp_date']?.toString() ?? '',
+      walletName: json['wlt_name']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      rcpAmount: json['rcp_amt']?.toString() ?? '',
     );
   }
 }
@@ -52,15 +55,11 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
   int currentPage = 1;
   final int itemsPerPage = 100;
   final int maxVisiblePages = 3;
-  int _selectedIndex = 0;
-  bool hasShownNoDataSnackBar = false;
   bool isLoading = false;
-
-  // API response data
-  List<ReceivedAmount> receivedTransactions = [];
-  List<ReceivedAmount> filteredTransactions = [];
+  int transactionTotal = 0;
   String totalReceivedAmount = '0';
-  int noOfCashWithMe = 0;
+
+  List<ReceivedAmount> _transactions = [];
 
   @override
   void initState() {
@@ -99,6 +98,8 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
         body: jsonEncode({
           "unid": unid,
           "slex": slex,
+          "srch": searchQuery,
+          "page": currentPage.toString(),
         }),
       );
 
@@ -109,19 +110,29 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
           final List<dynamic> receivedAmountList = data['receivedamountdet'] ?? [];
           
           setState(() {
-            totalReceivedAmount = data['ttl_received_amt'] ?? '0';
-            noOfCashWithMe = data['noofcashwithme'] ?? 0;
-            receivedTransactions = receivedAmountList
+            // Handle totalReceivedAmount - ensure it's always a string
+            totalReceivedAmount = data['ttl_received_amt']?.toString() ?? '0';
+            
+            // Handle transactionTotal - safely convert to int
+            var totalCount = data['noofcashwithme'];
+            if (totalCount is int) {
+              transactionTotal = totalCount;
+            } else if (totalCount is String) {
+              transactionTotal = int.tryParse(totalCount) ?? 0;
+            } else {
+              transactionTotal = 0;
+            }
+            
+            _transactions = receivedAmountList
                 .map((json) => ReceivedAmount.fromJson(json))
                 .toList();
-            _applyFilter();
           });
 
           if (receivedAmountList.isEmpty) {
             _showError('No received amount data found');
           }
         } else {
-          _showError(data['message'] ?? 'Failed to fetch received amount data.');
+          _showError(data['message']?.toString() ?? 'Failed to fetch received amount data.');
         }
       } else {
         _showError('Error: ${response.statusCode}');
@@ -137,117 +148,6 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
     }
   }
 
-  void _applyFilter() {
-    if (searchQuery.isEmpty) {
-      filteredTransactions = receivedTransactions;
-    } else {
-      filteredTransactions = receivedTransactions.where((item) {
-        return item.rcpNo.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            item.customerName.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            item.walletName.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            item.notes.toLowerCase().contains(searchQuery.toLowerCase());
-      }).toList();
-    }
-
-    if (filteredTransactions.isEmpty && searchQuery.isNotEmpty && !hasShownNoDataSnackBar) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sorry! No transaction found.')),
-          );
-        }
-      });
-      hasShownNoDataSnackBar = true;
-    } else if (filteredTransactions.isNotEmpty) {
-      hasShownNoDataSnackBar = false;
-    }
-  }
-
-  int get totalPages => (filteredTransactions.length / itemsPerPage).ceil();
-
-  List<ReceivedAmount> get currentTransactions {
-    if (filteredTransactions.length <= itemsPerPage) {
-      // If total items are less than or equal to items per page, show all
-      return filteredTransactions;
-    }
-    
-    final start = (currentPage - 1) * itemsPerPage;
-    final end = (start + itemsPerPage > filteredTransactions.length)
-        ? filteredTransactions.length
-        : start + itemsPerPage;
-    return filteredTransactions.sublist(start, end);
-  }
-
-  void _onItemTapped(int index) {
-    if (index == 0) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const HomePage()));
-    } else if (index == 1) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportPage()));
-    } else if (index == 3) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, AppConstants.registerRoute);
-              },
-              child: const Text('Logout'),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  void _showSearchDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Search'),
-        content: TextField(
-          controller: _searchController,
-          decoration: const InputDecoration(
-            hintText: 'Enter receipt no, customer name, wallet or notes'
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _searchController.clear();
-              setState(() {
-                searchQuery = '';
-                currentPage = 1;
-                _applyFilter();
-              });
-            },
-            child: const Text('Clear'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                searchQuery = _searchController.text;
-                currentPage = 1;
-                _applyFilter();
-              });
-              Navigator.of(context).pop();
-            },
-            child: const Text('Search'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -258,10 +158,71 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
     );
   }
 
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Search'),
+          content: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(hintText: 'Enter receipt no or name'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _searchController.clear();
+                setState(() {
+                  searchQuery = '';
+                  currentPage = 1;
+                });
+                fetchReceivedAmountData();
+              },
+              child: const Text('Clear'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  searchQuery = _searchController.text;
+                  currentPage = 1;
+                });
+                Navigator.of(context).pop();
+                fetchReceivedAmountData();
+              },
+              child: const Text('Search'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  DateTime? _parseDate(String dateStr) {
+    try {
+      if (dateStr.contains('-')) {
+        return DateTime.parse(dateStr);
+      } else if (dateStr.contains('/')) {
+        List<String> parts = dateStr.split('/');
+        if (parts.length == 3) {
+          return DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  String _formatDate(String dateStr) {
+    DateTime? date = _parseDate(dateStr);
+    if (date != null) {
+      return DateFormat('dd-MM-yyyy').format(date);
+    }
+    return dateStr;
+  }
+
   String _formatAmount(String amount) {
-    // Remove commas if present and add ₹ symbol
-    String cleanAmount = amount.replaceAll(',', '');
-    return '₹ $cleanAmount';
+    return amount.replaceAll(',', '');
   }
 
   String _getPaymentMethodFromWallet(String walletName) {
@@ -273,36 +234,45 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
       case 'cheque':
         return 'Cheque';
       default:
-        return walletName.toUpperCase();
+        return walletName;
     }
+  }
+
+  void _onPageChanged(int newPage) {
+    setState(() {
+      currentPage = newPage;
+    });
+    fetchReceivedAmountData();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+    if (isLoading && _transactions.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Received Amount'),
+          backgroundColor: AppTheme.primaryColor,
+          centerTitle: true,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('RECEIVED AMOUNT'),
-        centerTitle: true,
+        title: const Text('Received Amount'),
         backgroundColor: AppTheme.primaryColor,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: _showSearchDialog,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: fetchReceivedAmountData,
-          ),
+          )
         ],
       ),
       body: Column(
         children: [
+          // Total Received Amount Box
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
@@ -338,7 +308,7 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Total Transactions: $noOfCashWithMe',
+                  'Total Transactions: $transactionTotal',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
@@ -347,143 +317,225 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: const [
-                Text(
-                  'Recent Transactions',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          
           Expanded(
-            child: currentTransactions.isEmpty
-                ? const Center(child: Text('No received amounts found.'))
+            child: _transactions.isEmpty
+                ? const Center(child: Text("No transactions found.", style: TextStyle(fontSize: 16)))
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: currentTransactions.length,
+                    padding: const EdgeInsets.all(10),
+                    itemCount: _transactions.length,
                     itemBuilder: (context, index) {
-                      final transaction = currentTransactions[index];
+                      final transaction = _transactions[index];
                       return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        child: ListTile(
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          title: Text(
-                            transaction.customerName,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 1.5,
+                        margin: const EdgeInsets.only(bottom: 6),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200, width: 0.5),
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Column(
                             children: [
-                              const SizedBox(height: 4),
-                              Text('Date: ${transaction.rcpDate}'),
-                              Text('Receipt No: ${transaction.rcpNo}'),
-                              Text('Payment: ${_getPaymentMethodFromWallet(transaction.walletName)}'),
-                              if (transaction.notes.isNotEmpty)
-                                Text('Notes: ${transaction.notes}'),
+                              // Header Section with Receipt Number and Date
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(8),
+                                    topRight: Radius.circular(8),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Receipt No: ${transaction.rcpNo}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color.fromARGB(255, 5, 38, 76),
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          _formatDate(transaction.rcpDate),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Content Section
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Column(
+                                  children: [
+                                    // Customer Name Section
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.person,
+                                          size: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            transaction.customerName,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    const SizedBox(height: 6),
+                                    
+                                    // Payment and Amount Details Section
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          // Payment Method Section
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Payment',
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    color: Colors.grey.shade600,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  _getPaymentMethodFromWallet(transaction.walletName),
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          
+                                          // Divider
+                                          Container(
+                                            height: 20,
+                                            width: 1,
+                                            color: Colors.grey.shade300,
+                                          ),
+                                          
+                                          // Amount Section
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  'Amount',
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    color: Colors.grey.shade600,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  _formatAmount(transaction.rcpAmount),
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.green.shade700,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    
+                                    // Notes Section (if available) - Inline below payment/amount
+                                    if (transaction.notes.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Notes: ',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              transaction.notes,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey.shade800,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ],
-                          ),
-                          trailing: Text(
-                            _formatAmount(transaction.rcpAmount),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.green,
-                            ),
                           ),
                         ),
                       );
                     },
                   ),
           ),
-          if (filteredTransactions.isNotEmpty && filteredTransactions.length > itemsPerPage) _buildPagination(),
+          SlidingPaginationControls(
+            currentPage: currentPage,
+            totalItems: transactionTotal,
+            itemsPerPage: itemsPerPage,
+            maxVisiblePages: maxVisiblePages,
+            onPageChanged: _onPageChanged,
+            isLoading: isLoading,
+          ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: AppConstants.bottomNavItems.map((item) {
-          return BottomNavigationBarItem(
-            icon: Icon(item['icon']),
-            label: item['title'],
-          );
-        }).toList(),
+      bottomNavigationBar: const BottomNavigationButton(
+        selectedIndex: 0,
       ),
-    );
-  }
-
-  Widget _buildPagination() {
-    final List<Widget> pageButtons = [];
-
-    final int visiblePages = totalPages.clamp(1, maxVisiblePages);
-    int startPage = (currentPage - 1).clamp(0, totalPages - visiblePages) + 1;
-    int endPage = (startPage + visiblePages - 1).clamp(startPage, totalPages);
-
-    pageButtons.add(_paginationIcon(Icons.first_page,
-        enabled: currentPage > 1, onTap: () => setState(() => currentPage = 1)));
-
-    pageButtons.add(_paginationIcon(Icons.chevron_left,
-        enabled: currentPage > 1, onTap: () => setState(() => currentPage--)));
-
-    for (int i = startPage; i <= endPage; i++) {
-      pageButtons.add(
-        GestureDetector(
-          onTap: () => setState(() => currentPage = i),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: currentPage == i ? AppTheme.primaryColor : Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '$i',
-              style: TextStyle(
-                color: currentPage == i ? Colors.white : Colors.black,
-                fontWeight: currentPage == i ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    pageButtons.add(_paginationIcon(Icons.chevron_right,
-        enabled: currentPage < totalPages,
-        onTap: () => setState(() => currentPage++)));
-
-    pageButtons.add(_paginationIcon(Icons.last_page,
-        enabled: currentPage < totalPages,
-        onTap: () => setState(() => currentPage = totalPages)));
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 4,
-        runSpacing: 4,
-        children: pageButtons,
-      ),
-    );
-  }
-
-  Widget _paginationIcon(IconData icon,
-      {required bool enabled, required VoidCallback onTap}) {
-    return IconButton(
-      icon: Icon(icon, size: 20),
-      onPressed: enabled ? onTap : null,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
     );
   }
 }

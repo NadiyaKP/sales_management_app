@@ -307,7 +307,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
         // Try different permission approaches
         PermissionStatus status;
         
-        // First try manage external storage (Android 11+)
+        // First try manage external storage
         try {
           status = await Permission.manageExternalStorage.status;
           if (status.isGranted) {
@@ -339,7 +339,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
         
         return false;
       } else {
-        // iOS doesn't need storage permissions for app documents
+      
         return true;
       }
     } catch (e) {
@@ -940,7 +940,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
           'Discount Report',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -956,7 +956,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
         color: Colors.grey.shade50,
         child: Column(
           children: [
-            // Header filter UI
+           
             Container(
               padding: const EdgeInsets.all(16),
               color: Colors.grey.shade100,
@@ -967,7 +967,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
   children: [
     // Routes Dropdown
     Expanded(
-      flex: 3, // Balanced flex for routes
+      flex: 3, 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -980,13 +980,13 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
               borderRadius: BorderRadius.circular(4),
               color: Colors.white,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 8), // Reduced padding
+            padding: const EdgeInsets.symmetric(horizontal: 8), 
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 isExpanded: true,
                 value: _selectedRoute,
                 icon: const Icon(Icons.arrow_drop_down, size: 20),
-                style: const TextStyle(fontSize: 12, color: Colors.black), // Smaller font
+                style: const TextStyle(fontSize: 12, color: Colors.black),
                 items: allRoutes.map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -1010,10 +1010,10 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
         ],
       ),
     ),
-    const SizedBox(width: 6), // Reduced spacing
+    const SizedBox(width: 6), 
     // From Date
     Expanded(
-      flex: 4, // More space for dates
+      flex: 4, 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1028,7 +1028,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), // Reduced horizontal padding
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
               width: double.infinity,
               child: Text(
                 DateFormat('dd-MM-yyyy').format(_fromDate),
@@ -1040,10 +1040,10 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
         ],
       ),
     ),
-    const SizedBox(width: 6), // Reduced spacing
+    const SizedBox(width: 6), 
     // To Date
     Expanded(
-      flex: 4, // More space for dates
+      flex: 4, 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1058,7 +1058,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
                 borderRadius: BorderRadius.circular(4),
                 color: Colors.white,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), // Reduced horizontal padding
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
               width: double.infinity,
               child: Text(
                 DateFormat('dd-MM-yyyy').format(_toDate),
@@ -1074,42 +1074,44 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
 ),
                   const SizedBox(height: 16),
                   
-                  // Excel and Print buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _exportToExcel,
-                        icon: const Icon(Icons.file_download, size: 14),
-                        label: const Text('Excel'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[800], // Dark green color
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Smaller padding
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: _printReport,
-                        icon: const Icon(Icons.print, size: 14),
-                        label: const Text('Print'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor, // Using app primary color
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), // Smaller padding
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+                 // Excel and Print buttons
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
                   
                   if (mainTitle != null && mainTitle!.isNotEmpty) ...[
                     Text(
                       mainTitle!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -1135,7 +1137,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
                 ],
               ),
             ),
-            // Summary totals (only show when not searching)
+           
             if (discountTotal != null && searchQuery.isEmpty)
               Container(
                 margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -1158,10 +1160,10 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Discount Received:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+                          const Text('Discount Received:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                           Text(
                             discountTotal!.totalReceivedAmount,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
                           ),
                         ],
                       ),
@@ -1169,10 +1171,10 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Discount Allowed:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+                          const Text('Discount Allowed:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                           Text(
                             discountTotal!.totalGivenAmount,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
                           ),
                         ],
                       ),
@@ -1189,7 +1191,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
                             ? 'No discount records found for "$searchQuery"'
                             : 'No discount records in the selected date range.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(fontSize: 12),
                       ),
                     )
                   : ListView.builder(
@@ -1222,32 +1224,47 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(report.transactionType, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                                    Text(report.date, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                                    Text(report.transactionType, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                                    Text(report.date, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   capitalizeWords(report.customer.customerName),
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.blue.shade700),
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.blue.shade700),
                                 ),
                                 const SizedBox(height: 4),
                                 if (report.customer.phone.isNotEmpty)
-                                  Text(report.customer.phone),
-                                if (report.customer.address.isNotEmpty)
-                                  Text(capitalizeWords(report.customer.address)),
-                                if (report.customer.gstNo.isNotEmpty)
-                                  Text('GST No: ${report.customer.gstNo}'),
-                                Text('${report.customer.state},${report.customer.stateCode}'),
-                                if (report.notes.isNotEmpty)
-                                  Text('Notes: ${report.notes}'),
+  Text(
+    report.customer.phone,
+    style: const TextStyle(fontSize: 12),
+  ),
+if (report.customer.address.isNotEmpty)
+  Text(
+    capitalizeWords(report.customer.address),
+    style: const TextStyle(fontSize: 12),
+  ),
+if (report.customer.gstNo.isNotEmpty)
+  Text(
+    'GST No: ${report.customer.gstNo}',
+    style: const TextStyle(fontSize: 12),
+  ),
+Text(
+  '${report.customer.state},${report.customer.stateCode}',
+  style: const TextStyle(fontSize: 12),
+),
+if (report.notes.isNotEmpty)
+  Text(
+    'Notes: ${report.notes}',
+    style: const TextStyle(fontSize: 12),
+  ),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
                                     Text(
                                       discountValue,
                                       style: TextStyle(
-                                        fontSize: 24,
+                                        fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                         color: discountValue.startsWith('+') ? Colors.green : Colors.red,
                                       ),
@@ -1265,7 +1282,7 @@ class _DiscountReportPageState extends State<DiscountReportPage> {
         ),
       ),
       bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 1, // Reports page is at index 1
+        selectedIndex: 1,
       ),
     );
   }

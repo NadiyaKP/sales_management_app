@@ -67,10 +67,19 @@ class _SlidingPaginationControlsState extends State<SlidingPaginationControls> {
         ),
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          height: _isExpanded ? 60 : 0,
-          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-          color: Colors.blueGrey.shade100,
-          child: _isExpanded ? _buildPaginationContent() : null,
+          height: _isExpanded ? null : 0, // Changed from fixed 60 to null
+          constraints: _isExpanded 
+              ? const BoxConstraints(minHeight: 50, maxHeight: 80) // Added constraints
+              : const BoxConstraints(maxHeight: 0),
+          padding: _isExpanded 
+              ? const EdgeInsets.symmetric(vertical: 8, horizontal: 8) 
+              : EdgeInsets.zero,
+          // Removed: color: Colors.blueGrey.shade100,
+          child: _isExpanded 
+              ? SingleChildScrollView( // Wrapped content in SingleChildScrollView
+                  child: _buildPaginationContent(),
+                ) 
+              : const SizedBox.shrink(),
         ),
       ],
     );
@@ -78,27 +87,24 @@ class _SlidingPaginationControlsState extends State<SlidingPaginationControls> {
 
   Widget _buildPaginationContent() {
     return Column(
+      mainAxisSize: MainAxisSize.min, // Added to minimize space usage
       children: [
         // Page info row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Page ${widget.currentPage} of $totalPages',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ],
+        Text(
+          'Page ${widget.currentPage} of $totalPages',
+          style: const TextStyle(
+            color: Color.fromARGB(255, 20, 1, 1),
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 8), // Slightly increased spacing
         // Pagination controls row
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // Added to minimize space usage
             children: _buildPaginationButtons(),
           ),
         ),
@@ -244,8 +250,8 @@ class _SlidingPaginationControlsState extends State<SlidingPaginationControls> {
                 '$pageNumber',
                 style: TextStyle(
                   color: widget.currentPage == pageNumber 
-                      ? Colors.white 
-                      : (hasItems ? Colors.white : Colors.grey.shade600),
+                      ? Color.fromARGB(255, 19, 1, 1) 
+                      : (hasItems ? Color.fromARGB(255, 16, 0, 0) : Colors.grey.shade600),
                   fontWeight: widget.currentPage == pageNumber
                       ? FontWeight.bold
                       : FontWeight.normal,
@@ -270,7 +276,7 @@ class _SlidingPaginationControlsState extends State<SlidingPaginationControls> {
         child: Icon(
           icon,
           size: 14,
-          color: enabled ? Colors.white : Colors.grey.shade600,
+          color: enabled ? Colors.black : Colors.grey.shade600,
         ),
       ),
     );

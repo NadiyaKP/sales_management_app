@@ -70,8 +70,8 @@ class MenuItem extends StatelessWidget {
                         fontSize: 13,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 2, // Allow up to 2 lines
-                      overflow: TextOverflow.ellipsis, // Handle overflow
+                      maxLines: 2, 
+                      overflow: TextOverflow.ellipsis, 
                     ),
                   ),
                 ),

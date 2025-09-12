@@ -176,26 +176,26 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  String formatTransactionValue(String debit, String credit, String transactionType) {
+String formatTransactionValue(String debit, String credit, String transactionType) {
     double debitAmount = double.tryParse(debit.replaceAll(',', '')) ?? 0.0;
     double creditAmount = double.tryParse(credit.replaceAll(',', '')) ?? 0.0;
     if (debitAmount > 0) {
-      return "+₹${debitAmount.toStringAsFixed(2)}";
+      return "+${debitAmount.toStringAsFixed(2)}";
     } else if (creditAmount > 0) {
       if (transactionType.toLowerCase().contains('opening')) {
-        return "+₹${creditAmount.toStringAsFixed(2)}";
+        return "+${creditAmount.toStringAsFixed(2)}";
       } else {
-        return "-₹${creditAmount.toStringAsFixed(2)}";
+        return "-${creditAmount.toStringAsFixed(2)}";
       }
     }
-    return "₹0.00";
+    return "0.00";
   }
 
   String formatCurrency(String? value) {
-    if (value == null || value.isEmpty) return "₹0.00";
+    if (value == null || value.isEmpty) return "0.00";
     String cleanValue = value.replaceAll(',', '').replaceAll('Dr', '').replaceAll('Cr', '').trim();
     double amount = double.tryParse(cleanValue) ?? 0.0;
-    return "₹${amount.toStringAsFixed(2)}";
+    return amount.toStringAsFixed(2);
   }
 
   String formatCurrencyForPrint(String? value) {
@@ -763,42 +763,43 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
                 const SizedBox(height: 8),
                 
                 // Excel and Print buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _exportToExcel,
-                      icon: const Icon(Icons.file_download, size: 14),
-                      label: const Text('Excel'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[800],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        textStyle: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: _printReport,
-                      icon: const Icon(Icons.print, size: 14),
-                      label: const Text('Print'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        textStyle: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 8),
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    ElevatedButton.icon(
+      onPressed: _exportToExcel,
+      icon: const Icon(Icons.file_download, size: 12),
+      label: const Text('Excel'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green[800],
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+    const SizedBox(width: 6),
+    ElevatedButton.icon(
+      onPressed: _printReport,
+      icon: const Icon(Icons.print, size: 12),
+      label: const Text('Print'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        textStyle: const TextStyle(fontSize: 10),
+        minimumSize: const Size(60, 28),
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 8),
                 
                 // Customer name and date range
                 Text(
                   widget.customerName,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -816,7 +817,7 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
                     child: Text(
                       'No ledger records in the selected date range.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16),
+                      style: const TextStyle(fontSize: 12),
                     ),
                   )
                 : ListView(
@@ -838,7 +839,7 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('Total Debit:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  const Text('Total Debit:', style: TextStyle(fontWeight: FontWeight.bold,fontSize: 14)),
                                   Text(formatCurrency(totalDebit), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                                 ],
                               ),
@@ -855,7 +856,7 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text('Closing Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  Text(closingBalance ?? "₹0.00", style: TextStyle(fontSize: 18, color: Colors.teal.shade700, fontWeight: FontWeight.bold)),
+                                  Text(closingBalance ?? "0.00", style: TextStyle(fontSize: 14, color: Colors.teal.shade700, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                               if (receivedCheque != null && receivedCheque != "0.00") ...[
@@ -883,88 +884,92 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
                         ),
                       ),
                       
-                      // Ledger entries
-                      ...filteredAccountLedgerReport.map((ledger) {
-                        final transactionValue = formatTransactionValue(ledger.debit, ledger.credit, ledger.typeOfTransactions);
-                        
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey.shade300, width: 1),
-                          ),
-                          margin: const EdgeInsets.only(bottom: 16),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        ledger.typeOfTransactions,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0, color: Colors.indigo),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Text(
-                                      transactionValue,
-                                      style: TextStyle(
-                                        fontSize: 20.0,
-                                        color: transactionValue.startsWith('+') ? Colors.green : Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                if (ledger.debit != "0.00" && ledger.debit.isNotEmpty) ...[
-                                  Row(
-                                    children: [
-                                      const Text('Debit: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                                      Text(formatCurrency(ledger.debit), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                ],
-                                if (ledger.balance.isNotEmpty) ...[
-                                  Row(
-                                    children: [
-                                      const Text('Balance: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                                      Text(ledger.balance, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                ],
-                                Row(
-                                  children: [
-                                    const Text('Date: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                                    Text(_getDisplayDate(ledger), style: const TextStyle(color: Colors.grey)),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Notes: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                                    Expanded(
-                                      child: Text(
-                                        ledger.notes.isNotEmpty ? ledger.notes : '',
-                                        style: TextStyle(
-                                          color: ledger.notes.isNotEmpty ? Colors.black87 : Colors.grey,
-                                          fontStyle: ledger.notes.isNotEmpty ? FontStyle.normal : FontStyle.italic,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }),
+ // Ledger entries
+...filteredAccountLedgerReport.map((ledger) {
+  final transactionValue = formatTransactionValue(ledger.debit, ledger.credit, ledger.typeOfTransactions);
+  
+  return Card(
+    elevation: 2,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: Colors.grey.shade300, width: 1),
+    ),
+    margin: const EdgeInsets.only(bottom: 16),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  ledger.typeOfTransactions,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 12.0,  
+                    color: Colors.indigo
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                transactionValue,
+                style: TextStyle(
+                  fontSize: 16.0,  
+                  color: transactionValue.startsWith('+') ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (ledger.debit != "0.00" && ledger.debit.isNotEmpty) ...[
+            Row(
+              children: [
+                const Text('Debit: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                Text(formatCurrency(ledger.debit), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 4),
+          ],
+          if (ledger.balance.isNotEmpty) ...[
+            Row(
+              children: [
+                const Text('Balance: ', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                Text(ledger.balance, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ],
+            ),
+            const SizedBox(height: 4),
+          ],
+          Row(
+            children: [
+              const Text('Date: ', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text(_getDisplayDate(ledger), style: const TextStyle(color: Colors.grey)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Notes: ', style: TextStyle(fontWeight: FontWeight.w500)),
+              Expanded(
+                child: Text(
+                  ledger.notes.isNotEmpty ? ledger.notes : '',
+                  style: TextStyle(
+                    color: ledger.notes.isNotEmpty ? Colors.black87 : Colors.grey,
+                    fontStyle: ledger.notes.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+})
                     ],
                   ),
           ),
@@ -974,19 +979,19 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${widget.customerName} Ledger Report'),
-        centerTitle: true,
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('${widget.customerName} Ledger Report'),
+      centerTitle: true,
+      backgroundColor: AppTheme.primaryColor,
+      foregroundColor: Colors.white,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => Navigator.of(context).pop(),
       ),
-      body: isLoading ? const Center(child: CircularProgressIndicator()) : _buildLedgerReport(),
-    );
-  }
+    ),
+    body: isLoading ? const Center(child: CircularProgressIndicator()) : _buildLedgerReport(),
+  );
+}
 }

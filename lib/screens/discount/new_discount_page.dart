@@ -35,13 +35,11 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
   bool _isLoading = false;
   int _selectedIndex = 2; 
   
-  // API-based customer data
   List<String> customerNames = [];
   List<String> _filteredCustomers = [];
   Map<String, String> customerIdMap = {};
   Map<String, String> customerAmountMap = {};
   
-  // Focus node for customer search
   final FocusNode _customerFocusNode = FocusNode();
 
   @override
@@ -49,11 +47,9 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
     super.initState();
     _loadCustomers();
     
-    // Add listeners for customer search functionality
     _customerSearchController.addListener(_filterCustomers);
     _customerFocusNode.addListener(_onCustomerFocusChange);
     
-    // Schedule initialization after the first frame renders
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeWithEditData();
     });
@@ -61,7 +57,6 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
 
   @override
   void dispose() {
-    // Remove listeners and dispose controllers
     _customerSearchController.removeListener(_filterCustomers);
     _customerSearchController.dispose();
     _customerFocusNode.removeListener(_onCustomerFocusChange);
@@ -74,14 +69,12 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
     super.dispose();
   }
 
-  // Customer focus change handler
   void _onCustomerFocusChange() {
     setState(() {
       _showCustomerDropdown = _customerFocusNode.hasFocus && _filteredCustomers.isNotEmpty;
     });
   }
 
-  // Load customers from API
   Future<void> _loadCustomers() async {
     try {
       setState(() {
@@ -93,7 +86,7 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
         customerNames = customers.map((e) => e["cust_name"]!).toList();
         customerIdMap = {for (var e in customers) e["cust_name"]!: e["custid"]!};
         customerAmountMap = {for (var e in customers) e["cust_name"]!: e["outstand_amt"]!};
-        _filteredCustomers = List.from(customerNames); // Initialize filtered list
+        _filteredCustomers = List.from(customerNames);
       });
     } catch (e) {
       _showError('Error loading customers: $e');
@@ -104,47 +97,35 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
     }
   }
   
-  // Initialize with edit data if available
   void _initializeWithEditData() {
-    // Check if we have route arguments for editing
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args != null && args is Map<String, dynamic>) {
-      // edit operation
       setState(() {
         _isEditing = args['isEditing'] ?? false;
         
-        // Get the initial data
         final initialData = args['initialData'];
         if (initialData != null && initialData is Map<String, dynamic>) {
-          // Populate the form with initial data
           _selectedCustomerName = initialData['customerName'] ?? '';
           _customerNameController.text = _selectedCustomerName ?? '';
-          _customerSearchController.text = _selectedCustomerName ?? ''; // NEW: Set customer search controller
+          _customerSearchController.text = _selectedCustomerName ?? '';
           
-          // Set due amount (comes from the parent)
           _dueAmountController.text = initialData['dueAmount'] ?? '0';
           
-          // Parse the date
           if (initialData['discountDate'] != null) {
             try {
               _selectedDate = DateTime.parse(initialData['discountDate']);
             } catch (e) {
-              // In case of parsing error, use current date
               _selectedDate = DateTime.now();
             }
           }
           
-          // Set discount amount
           _discountAmountController.text = initialData['discountAmount'] ?? '';
-          
-          // Set notes
           _notesController.text = initialData['notes'] ?? '';
         }
       });
     }
   }
 
-  // Filter customers based on search text
   void _filterCustomers() {
     String query = _customerSearchController.text.toLowerCase();
     setState(() {
@@ -160,14 +141,14 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
   }
 
   void _onItemTapped(int index) {
-    if (index == _selectedIndex) return; // No action if current page
+    if (index == _selectedIndex) return;
     
     if (index == 0) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const HomePage()));
     } else if (index == 1) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportPage()));
     } else if (index == 2) {
-      Navigator.pop(context); // Return to discounts page
+      Navigator.pop(context);
     } else if (index == 3) {
       showDialog(
         context: context,
@@ -192,7 +173,6 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
     }
   }
 
-  // Handle customer selection from dropdown
   void _selectCustomer(String customerName) {
     setState(() {
       _selectedCustomerId = customerIdMap[customerName];
@@ -201,7 +181,6 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
       _customerSearchController.text = customerName;
       _dueAmountController.text = customerAmountMap[customerName] ?? '0';
       _showCustomerDropdown = false;
-      // Clear discount amount when customer changes to trigger validation
       if (_discountAmountController.text.isNotEmpty) {
         _formKey.currentState?.validate();
       }
@@ -223,7 +202,6 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
     }
   }
 
-  // Save discount data using API
   Future<Map<String, dynamic>> _saveDiscountData(String action) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -235,7 +213,6 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
         return {"result": "0", "message": "Missing credentials"};
       }
 
-      // Prepare request body
       Map<String, dynamic> requestBody = {
         "unid": unid,
         "slex": slex,
@@ -275,7 +252,6 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
 
         if (result['result'] == '1') {
           _showSuccess(result['message'] ?? 'Discount saved successfully');
-          // Return success to previous screen
           Navigator.pop(context, {'success': true, 'message': result['message']});
         } else {
           _showError(result['message'] ?? 'Failed to save discount');
@@ -309,50 +285,51 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,
+      labelStyle: const TextStyle(fontSize: 12),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: Colors.grey),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: Colors.grey),
       ),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
     );
   }
 
-  // NEW: Build customer search field similar to new_order_page.dart
   Widget _buildCustomerSearchField() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Customer Name', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        const Text('Customer Name', style: TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             children: [
               TextField(
                 controller: _customerSearchController,
                 focusNode: _customerFocusNode,
+                style: const TextStyle(fontSize: 13),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   hintText: 'Type to search customer...',
-                  suffixIcon: Icon(Icons.search, color: Colors.grey),
+                  hintStyle: TextStyle(fontSize: 13),
+                  suffixIcon: Icon(Icons.search, color: Colors.grey, size: 18),
                 ),
                 onChanged: (value) {
-                  // Update selected customer if exact match
                   if (customerNames.contains(value)) {
                     setState(() {
                       _selectedCustomerName = value;
@@ -368,16 +345,14 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
                       _dueAmountController.text = '0';
                     });
                   }
-                  // Trigger form validation
                   if (_discountAmountController.text.isNotEmpty) {
                     _formKey.currentState?.validate();
                   }
                 },
               ),
-              // Customer dropdown
               if (_showCustomerDropdown && _filteredCustomers.isNotEmpty)
                 Container(
-                  constraints: const BoxConstraints(maxHeight: 150),
+                  constraints: const BoxConstraints(maxHeight: 120),
                   decoration: BoxDecoration(
                     border: Border(
                       top: BorderSide(color: Colors.grey.shade300),
@@ -392,7 +367,7 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
                       return InkWell(
                         onTap: () => _selectCustomer(customerName),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: _selectedCustomerName == customerName
                                 ? Colors.blue.withOpacity(0.1)
@@ -407,12 +382,12 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.person, color: Colors.grey, size: 16),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.person, color: Colors.grey, size: 14),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   _capitalizeWords(customerName),
-                                  style: const TextStyle(fontSize: 14),
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                               ),
                             ],
@@ -425,15 +400,14 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
             ],
           ),
         ),
-        // Validation error display
         if (_selectedCustomerName == null && _customerSearchController.text.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 8, left: 12),
+            padding: const EdgeInsets.only(top: 4, left: 8),
             child: Text(
               'Please select a valid customer from the dropdown',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.error,
-                fontSize: 12,
+                fontSize: 10,
               ),
             ),
           ),
@@ -459,26 +433,25 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'EDIT DISCOUNT' : 'NEW DISCOUNT'),
+        title: Text(_isEditing ? 'Edit Discount' : 'New Discount', style: const TextStyle(fontSize: 19)),
         centerTitle: true,
         backgroundColor: AppTheme.primaryColor,
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // NEW: Customer Name with Search functionality
                 _buildCustomerSearchField(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                // Due Amount - read-only
                 TextFormField(
                   controller: _dueAmountController,
                   keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 13),
                   decoration: _inputDecoration('Due Amount'),
                   readOnly: true, 
                   enabled: false, 
@@ -489,27 +462,26 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                // Discount Date
                 InkWell(
                   onTap: () => _selectDate(context),
                   child: InputDecorator(
                     decoration: _inputDecoration('Discount Date'),
                     child: Text(
                       DateFormat.yMMMMd().format(_selectedDate),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                // Discount Amount
                 TextFormField(
                   controller: _discountAmountController,
                   keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 13),
                   decoration: _inputDecoration('Discount Amount'),
                   onChanged: (value) {
-                    // Trigger validation on every change
                     _formKey.currentState?.validate();
                   },
                   validator: (value) {
@@ -530,7 +502,6 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
                       return 'Enter a valid amount with up to 2 decimal places';
                     }
                     
-                    // Validate against due amount
                     if (_dueAmountController.text.isNotEmpty) {
                       final dueAmount = double.tryParse(_dueAmountController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
                       if (number > dueAmount) {
@@ -540,43 +511,39 @@ class _NewDiscountPageState extends State<NewDiscountPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                // Notes 
                 TextFormField(
                   controller: _notesController,
+                  style: const TextStyle(fontSize: 13),
                   decoration: _inputDecoration('Notes'),
                   maxLines: 2,
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
 
-                // Save Button
-                ElevatedButton.icon(
+                ElevatedButton(
                   onPressed: _isLoading ? null : _submitForm,
-                  icon: _isLoading 
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isEditing ? const Color.fromARGB(255, 32, 104, 163) : AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: _isLoading 
                       ? const SizedBox(
-                          width: 20,
-                          height: 20,
+                          width: 16,
+                          height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : Icon(_isEditing ? Icons.edit : Icons.save),
-                  label: Text(
-                    _isLoading 
-                        ? 'Saving...'
-                        : (_isEditing ? 'UPDATE' : 'SAVE'),
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isEditing ? const Color.fromARGB(255, 32, 104, 163) : AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+                      : Text(
+                          _isEditing ? 'UPDATE' : 'SAVE',
+                          style: const TextStyle(fontSize: 14),
+                        ),
                 ),
               ],
             ),
