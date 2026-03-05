@@ -268,7 +268,7 @@ class _NewChequePageState extends State<NewChequePage> {
         "unid": unid,
         "slex": slex,
         "custid": selectedCustId!,
-        "cust_name": selectedCustomer!,
+        "cust_name": selectedCustomer!.toLowerCase(),
         "chq_no": _chequeNoController.text.trim(),
         "chq_date": _chequeDateController.text.trim(),
         "chq_amt": _amountController.text.trim(),

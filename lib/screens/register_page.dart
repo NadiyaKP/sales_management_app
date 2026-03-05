@@ -36,17 +36,6 @@ class RegistrationScreenState extends State<RegistrationScreen> {
       );
       return;
     }
-    if (!_isValidUrl(url)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid URL format'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.all(10),
-        ),
-      );
-      return;
-    }
     setState(() {
       _isLoading = true;
     });
@@ -74,7 +63,6 @@ class RegistrationScreenState extends State<RegistrationScreen> {
       "password": password,
     };
 
-    // Debug prints for request
     print('=== REGISTRATION API REQUEST ===');
     print('API URL: $apiUrl');
     print('Request Headers: {"Content-Type": "application/json"}');
@@ -89,7 +77,6 @@ class RegistrationScreenState extends State<RegistrationScreen> {
         body: json.encode(body),
       );
 
-      // Debug prints for response
       print('=== REGISTRATION API RESPONSE ===');
       print('Status Code: ${response.statusCode}');
       print('Response Headers: ${response.headers}');
@@ -98,8 +85,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
-        // Debug print for parsed response data
+
         print('=== PARSED RESPONSE DATA ===');
         print('Parsed Data: $data');
         print('Result: ${data['result']}');
@@ -118,7 +104,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
           await prefs.setString('password', password);
           await prefs.setString('slex', slex);
           await prefs.setString('unid', formattedDate);
-          
+
           print('=== SHARED PREFERENCES SAVED ===');
           print('isRegistered: true');
           print('url: $url');
@@ -127,7 +113,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
           print('slex: $slex');
           print('unid: $formattedDate');
           print('=================================');
-          
+
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -144,7 +130,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
           print('Server returned result: ${data['result']}');
           print('Error message: ${data['message']}');
           print('===========================');
-          
+
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -158,7 +144,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
         print('Status Code: ${response.statusCode}');
         print('Response Body: ${response.body}');
         print('==================');
-        
+
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -172,7 +158,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
       print('Error Type: ${error.runtimeType}');
       print('Error Message: $error');
       print('========================');
-      
+
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -183,12 +169,6 @@ class RegistrationScreenState extends State<RegistrationScreen> {
     }
   }
 
-  bool _isValidUrl(String url) {
-    const urlPattern =
-        r'^(https?:\/\/)?([\w-]+\.)+[\w-]{2,4}(/[\w\-./?%&=]*)?$';
-    return RegExp(urlPattern).hasMatch(url);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,7 +176,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
       body: Stack(
         children: [
           Container(
-            height: MediaQuery.of(context).size.height * 0.35, 
+            height: MediaQuery.of(context).size.height * 0.35,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -219,8 +199,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 5), 
-                    
+                    const SizedBox(height: 5),
                     Column(
                       children: [
                         Image.asset(
@@ -229,7 +208,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                           height: 180,
                           fit: BoxFit.contain,
                         ),
-                        const SizedBox(height: 1), 
+                        const SizedBox(height: 1),
                         const Text(
                           "Create Account",
                           style: TextStyle(
@@ -241,7 +220,6 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                       ],
                     ),
                     const SizedBox(height: 30),
-              
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -280,7 +258,39 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20), 
+
+                    // ── "Already have an account? Login" link ──
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Already have an account? ",
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const LoginPage()),
+                            );
+                          },
+                          child: Text(
+                            "Login",
+                            style: TextStyle(
+                              color: Theme.of(context).primaryColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),

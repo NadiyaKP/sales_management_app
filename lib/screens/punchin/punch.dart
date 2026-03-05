@@ -317,7 +317,7 @@ class _CameraPageScreenState extends State<CameraPageScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Location Access'),
+          title:  Text('Location Access'),
           content: const Text(
             'Your current location will be accessed for this punch-in. '
             'Do you want to allow location access?',

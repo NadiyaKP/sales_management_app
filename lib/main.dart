@@ -122,7 +122,7 @@ void main() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   if (!prefs.containsKey('url')) {
     await prefs.setString(
-        'url', 'https://www.coremicron.in/test/mobile-service');
+        'url', 'http://192.168.1.108:80/gst-3-3-production/mobile-service/sales-executive');
   }
 
   // Orientation

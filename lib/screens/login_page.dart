@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:sales_management_app/screens/home_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'home_page.dart';
@@ -17,7 +16,7 @@ class LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _obscurePassword = true; 
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -42,20 +41,14 @@ class LoginPageState extends State<LoginPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     await _callLoginApi(username, password);
-    
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
   }
 
   Future<void> _callLoginApi(String username, String password) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? url = prefs.getString('url');
+    String? url  = prefs.getString('url');
     String? unid = prefs.getString('unid');
 
     if (url == null || unid == null || url.isEmpty || unid.isEmpty) {
@@ -71,18 +64,15 @@ class LoginPageState extends State<LoginPage> {
       return;
     }
 
-    String apiUrl = '$url/login.php';
-    final Map<String, String> body = {
-      "unid": unid,
-      "user_name": username,
-      "password": password,
-    };
-
     try {
       final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: json.encode(body),
+        Uri.parse('$url/login.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'unid': unid,
+          'user_name': username,
+          'password': password,
+        }),
       );
 
       if (!context.mounted) return;
@@ -90,14 +80,14 @@ class LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        if (data['result'] == "1") {
-          String slex = data['slex'];
+        if (data['result'] == '1') {
+          final String slex = data['slex'];
           await prefs.setBool('isRegistered', true);
           await prefs.setString('username', username);
           await prefs.setString('password', password);
           await prefs.setString('slex', slex);
           await prefs.setString('unid', unid);
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Login Successful: ${data['message']}'),
@@ -106,7 +96,7 @@ class LoginPageState extends State<LoginPage> {
               margin: const EdgeInsets.all(10),
             ),
           );
-          
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const HomePage()),
@@ -150,6 +140,7 @@ class LoginPageState extends State<LoginPage> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
+          // ── Gradient header background ──
           Container(
             height: MediaQuery.of(context).size.height * 0.35,
             decoration: BoxDecoration(
@@ -167,6 +158,7 @@ class LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -175,6 +167,7 @@ class LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 5),
+                    // ── Logo + welcome ──
                     Column(
                       children: [
                         Image.asset(
@@ -185,7 +178,7 @@ class LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 1),
                         const Text(
-                          "Welcome Back",
+                          'Welcome Back',
                           style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
@@ -195,6 +188,7 @@ class LoginPageState extends State<LoginPage> {
                       ],
                     ),
                     const SizedBox(height: 30),
+                    // ── Login card ──
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -233,6 +227,8 @@ class LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
+
+          // ── Loading overlay ──
           if (_isLoading)
             Container(
               color: Colors.black54,
@@ -251,10 +247,8 @@ class LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 15),
                       const Text(
-                        "Logging in...",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        'Logging in...',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -275,6 +269,7 @@ class LoginPageState extends State<LoginPage> {
   }) {
     return TextField(
       controller: controller,
+      enabled: enabled,
       decoration: InputDecoration(
         labelText: labelText,
         hintText: hintText,
@@ -284,20 +279,17 @@ class LoginPageState extends State<LoginPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        prefixIcon: Icon(
-          icon,
-          color: Theme.of(context).primaryColor,
-        ),
+        prefixIcon: Icon(icon, color: Theme.of(context).primaryColor),
         labelStyle: TextStyle(color: Colors.grey.shade700),
       ),
-      enabled: enabled,
     );
   }
 
   Widget _buildPasswordField() {
     return TextField(
       controller: _passwordController,
-      obscureText: _obscurePassword, 
+      obscureText: _obscurePassword,
+      enabled: !_isLoading,
       decoration: InputDecoration(
         labelText: 'Password',
         hintText: 'Enter your password',
@@ -307,24 +299,18 @@ class LoginPageState extends State<LoginPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        prefixIcon: Icon(
-          Icons.lock,
-          color: Theme.of(context).primaryColor,
-        ),
+        prefixIcon:
+            Icon(Icons.lock, color: Theme.of(context).primaryColor),
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility_off : Icons.visibility,
             color: Theme.of(context).primaryColor,
           ),
-          onPressed: () {
-            setState(() {
-              _obscurePassword = !_obscurePassword;
-            });
-          },
+          onPressed: () =>
+              setState(() => _obscurePassword = !_obscurePassword),
         ),
         labelStyle: TextStyle(color: Colors.grey.shade700),
       ),
-      enabled: !_isLoading,
     );
   }
 
@@ -356,22 +342,20 @@ class LoginPageState extends State<LoginPage> {
 
   Widget _buildRegisterLink() {
     return GestureDetector(
-      onTap: _isLoading ? null : () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const RegistrationScreen()),
-        );
-      },
+      onTap: _isLoading
+          ? null
+          : () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const RegistrationScreen()),
+              ),
       child: RichText(
         text: TextSpan(
           text: "Don't have an account? ",
-          style: TextStyle(
-            color: Colors.grey.shade600,
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
           children: [
             TextSpan(
-              text: "Register",
+              text: 'Register',
               style: TextStyle(
                 color: Theme.of(context).primaryColor,
                 fontWeight: FontWeight.bold,

@@ -300,7 +300,7 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
                 const SizedBox(height: 8),
                 Text(
                   _formatAmount(totalReceivedAmount),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primaryColor,
@@ -344,7 +344,7 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                                  color: const Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
                                   borderRadius: const BorderRadius.only(
                                     topLeft: Radius.circular(8),
                                     topRight: Radius.circular(8),
@@ -356,7 +356,7 @@ class _ReceivedAmountPageState extends State<ReceivedAmountPage> {
                                     Expanded(
                                       child: Text(
                                         'Receipt No: ${transaction.rcpNo}',
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
                                           color: Color.fromARGB(255, 5, 38, 76),

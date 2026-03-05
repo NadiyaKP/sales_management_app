@@ -50,7 +50,7 @@ class _CustomerLedgerPageState extends State<CustomerLedgerPage> {
         return Theme(
           data: ThemeData.light().copyWith(
             primaryColor: AppTheme.primaryColor,
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppTheme.primaryColor,
             ),
             buttonTheme: const ButtonThemeData(
@@ -145,7 +145,7 @@ class _CustomerLedgerPageState extends State<CustomerLedgerPage> {
               child: Text(
                 widget.customerName,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: AppTheme.primaryColor,
@@ -234,10 +234,10 @@ class _CustomerLedgerPageState extends State<CustomerLedgerPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
+                  const Row(
                     children: [
-                      const Text('Total Credit:'),
-                      const Spacer(),
+                       Text('Total Credit:'),
+                       Spacer(),
                       Text(
                         '₹0.00',
                         style: TextStyle(color: AppTheme.primaryColor),

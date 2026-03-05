@@ -450,7 +450,7 @@ class _ChequesPageState extends State<ChequesPage> {
                         width: double.infinity,
                         color: Colors.green,
                         padding: const EdgeInsets.all(16.0),
-                        child: Center(
+                        child: const Center(
                           child: Text(
                             'Cleared Cheque',
                             style: TextStyle(
@@ -461,12 +461,12 @@ class _ChequesPageState extends State<ChequesPage> {
                           ),
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text(
                         'Check No: ${cheque.chequeNo}',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       GestureDetector(
                         onTap: () {
                           _selectDate(context, _receivedDateController);
@@ -474,23 +474,23 @@ class _ChequesPageState extends State<ChequesPage> {
                         child: AbsorbPointer(
                           child: TextField(
                             controller: _receivedDateController,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Received Date',
                               border: OutlineInputBorder(),
                             ),
                           ),
                         ),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       TextField(
                         controller: _receivedAmountController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Received Amount',
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       // Wallet dropdown
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,7 +504,7 @@ class _ChequesPageState extends State<ChequesPage> {
                             child: InputDecorator(
                               decoration: InputDecoration(
                                 labelText: 'Amount To',
-                                border: OutlineInputBorder(),
+                                border: const OutlineInputBorder(),
                                 suffixIcon: Icon(
                                   _isWalletDropdownOpen ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                                   color: AppTheme.primaryColor,
@@ -521,7 +521,7 @@ class _ChequesPageState extends State<ChequesPage> {
                           if (_isWalletDropdownOpen)
                             Container(
                               height: 200,
-                              margin: EdgeInsets.only(top: 5),
+                              margin: const EdgeInsets.only(top: 5),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 border: Border.all(color: Colors.grey.shade300),
@@ -531,12 +531,12 @@ class _ChequesPageState extends State<ChequesPage> {
                                     color: Colors.grey.withOpacity(0.3),
                                     spreadRadius: 1,
                                     blurRadius: 5,
-                                    offset: Offset(0, 3),
+                                    offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
                               child: wallets.isEmpty
-                                  ? Center(child: Text('No wallets found'))
+                                  ? const Center(child: Text('No wallets found'))
                                   : ListView.builder(
                                       itemCount: wallets.length,
                                       itemBuilder: (context, index) {
@@ -559,15 +559,15 @@ class _ChequesPageState extends State<ChequesPage> {
                             ),
                         ],
                       ),
-                      SizedBox(height: 16),
-                      Text('Notes'),
+                      const SizedBox(height: 16),
+                      const Text('Notes'),
                       TextField(
                         controller: _notesController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      SizedBox(height: 30),
+                      const SizedBox(height: 30),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -575,16 +575,16 @@ class _ChequesPageState extends State<ChequesPage> {
                             onPressed: () => Navigator.pop(context),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
-                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                               minimumSize: Size.zero,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                             ),
-                            child: Text(
+                            child: const Text(
                               'Cancel',
                               style: TextStyle(color: Colors.white),
                             ),
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () async {
                               if (selectedWallet == null || selectedWalletId == null) {
@@ -618,12 +618,12 @@ class _ChequesPageState extends State<ChequesPage> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF022E44),
-                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              backgroundColor: const Color(0xFF022E44),
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                               minimumSize: Size.zero,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                             ),
-                            child: Text(
+                            child: const Text(
                               'Save',
                               style: TextStyle(color: Colors.white),
                             ),
@@ -648,9 +648,9 @@ class _ChequesPageState extends State<ChequesPage> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
           child: Padding(
-            padding: EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,8 +658,8 @@ class _ChequesPageState extends State<ChequesPage> {
                 Container(
                   width: double.infinity,
                   color: Colors.orange,
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(
+                  padding: const EdgeInsets.all(16.0),
+                  child: const Center(
                     child: Text(
                       'Bounced Cheque',
                       style: TextStyle(

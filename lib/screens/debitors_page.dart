@@ -415,7 +415,7 @@ class DebitorListItem extends StatelessWidget {
                   debitor.customer.customerName.isNotEmpty
                       ? debitor.customer.customerName.substring(0, 1).toUpperCase()
                       : 'U',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primaryColor,

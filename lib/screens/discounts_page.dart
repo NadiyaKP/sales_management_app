@@ -564,9 +564,9 @@ class _DiscountsPageState extends State<DiscountsPage> {
                   // Dialog Title
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AppTheme.primaryColor,
-                      borderRadius: const BorderRadius.only(
+                      borderRadius:  BorderRadius.only(
                         topLeft: Radius.circular(4),
                         topRight: Radius.circular(4),
                       ),

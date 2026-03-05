@@ -205,7 +205,7 @@ class _EditChequePageState extends State<EditChequePage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppTheme.primaryColor,
               onPrimary: Colors.white,
               onSurface: Colors.black,

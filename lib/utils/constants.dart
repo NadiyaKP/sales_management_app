@@ -36,8 +36,8 @@ class AppConstants {
   // Bottom navigation items
   static const List<Map<String, dynamic>> bottomNavItems = [
     {'title': 'Home', 'icon': Icons.home},
-    {'title': 'Reports', 'icon': Icons.bar_chart},
+     {'title': 'Financial Year', 'icon': Icons.calendar_today_outlined},
     {'title': 'Punch In', 'icon': Icons.access_time},
-    {'title': 'Logout', 'icon': Icons.logout},
+    {'title': 'Account', 'icon': Icons.person_outline},
   ];
 }

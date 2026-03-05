@@ -246,7 +246,7 @@ class _EditChequePageState extends State<EditChequePage> {
         "action": "update",
         "chqid": widget.chequeData['chqid'] ?? '',
         "chq_no": _chequeNoController.text.trim(),
-        "cust_name": selectedCustomer ?? '',
+        "cust_name": selectedCustomer?.toLowerCase() ?? '',
         "custid": selectedCustId ?? '',
         "chq_date": _chequeDateController.text.trim(),
         "chq_amt": _amountController.text.trim(),

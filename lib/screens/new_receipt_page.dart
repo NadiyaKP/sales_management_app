@@ -624,7 +624,7 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                             ),
                           ),
                           trailing: isSelected 
-                              ? Icon(
+                              ? const Icon(
                                   Icons.check_circle,
                                   color: AppTheme.primaryColor,
                                   size: 20,
@@ -711,7 +711,7 @@ class _NewReceiptPageState extends State<NewReceiptPage> {
                             ),
                           ),
                           trailing: isSelected 
-                              ? Icon(
+                              ? const Icon(
                                   Icons.check_circle,
                                   color: AppTheme.primaryColor,
                                   size: 20,

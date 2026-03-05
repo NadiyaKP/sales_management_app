@@ -82,12 +82,12 @@ class CollectionCustomer {
   
   factory CollectionCustomer.fromJson(Map<String, dynamic> json) {
     return CollectionCustomer(
-      customerName: json['custname'] ?? '',
+      customerName: json['name'] ?? '', // Changed from 'custname' to 'name'
       address: json['address'] ?? '',
       phone: json['phone'] ?? '',
       state: json['state'] ?? '',
       stateCode: json['state_code'] ?? '',
-      gstNo: json['gst_no'] ?? '',
+      gstNo: json['gst_number'] ?? '', // Changed from 'gst_no' to 'gst_number'
     );
   }
 }
@@ -976,150 +976,150 @@ class _ReceiptReportPageState extends State<ReceiptReportPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Filter controls row
-                 Row(
-  children: [
-    // Routes Dropdown
-    Expanded(
-      flex: 3, // Balanced flex for routes
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Routes', 
-            style: TextStyle(fontSize: 11, color: Colors.black54),
-            overflow: TextOverflow.ellipsis,
-          ),
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              color: Colors.white,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8), 
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: _selectedRoute,
-                icon: const Icon(Icons.arrow_drop_down, size: 20),
-                style: const TextStyle(fontSize: 12, color: Colors.black), 
-                items: allRoutes.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(
-                      value,
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedRoute = newValue!;
-                    selectedRouteId = newValue == "Routes" ? null : routeIdMap[newValue];
-                  });
-                  fetchCollection();
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 6), 
-    // From Date
-    Expanded(
-      flex: 4, 
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('From Date', 
-            style: TextStyle(fontSize: 11, color: Colors.black54),
-            overflow: TextOverflow.ellipsis,
-          ),
-          InkWell(
-            onTap: () => _selectDate(context, true),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: Colors.white,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
-              width: double.infinity,
-              child: Text(
-                DateFormat('dd-MM-yyyy').format(_fromDate),
-                style: const TextStyle(fontSize: 12),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 6), 
-    // To Date
-    Expanded(
-      flex: 4, 
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('To Date', 
-            style: TextStyle(fontSize: 11, color: Colors.black54),
-            overflow: TextOverflow.ellipsis,
-          ),
-          InkWell(
-            onTap: () => _selectDate(context, false),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: Colors.white,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
-              width: double.infinity,
-              child: Text(
-                DateFormat('dd-MM-yyyy').format(_toDate),
-                style: const TextStyle(fontSize: 12),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ],
-),
+                  Row(
+                    children: [
+                      // Routes Dropdown
+                      Expanded(
+                        flex: 3, // Balanced flex for routes
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Routes', 
+                              style: TextStyle(fontSize: 11, color: Colors.black54),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                color: Colors.white,
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 8), 
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: _selectedRoute,
+                                  icon: const Icon(Icons.arrow_drop_down, size: 20),
+                                  style: const TextStyle(fontSize: 12, color: Colors.black), 
+                                  items: allRoutes.map<DropdownMenuItem<String>>((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(
+                                        value,
+                                        style: const TextStyle(fontSize: 12),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      _selectedRoute = newValue!;
+                                      selectedRouteId = newValue == "Choose" ? null : routeIdMap[newValue];
+                                    });
+                                    fetchCollection();
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6), 
+                      // From Date
+                      Expanded(
+                        flex: 4, 
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('From Date', 
+                              style: TextStyle(fontSize: 11, color: Colors.black54),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            InkWell(
+                              onTap: () => _selectDate(context, true),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  color: Colors.white,
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
+                                width: double.infinity,
+                                child: Text(
+                                  DateFormat('dd-MM-yyyy').format(_fromDate),
+                                  style: const TextStyle(fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6), 
+                      // To Date
+                      Expanded(
+                        flex: 4, 
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('To Date', 
+                              style: TextStyle(fontSize: 11, color: Colors.black54),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            InkWell(
+                              onTap: () => _selectDate(context, false),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  color: Colors.white,
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12), 
+                                width: double.infinity,
+                                child: Text(
+                                  DateFormat('dd-MM-yyyy').format(_toDate),
+                                  style: const TextStyle(fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                   
                   const SizedBox(height: 16),
                   
-                 // Excel and Print buttons
-Row(
-  mainAxisAlignment: MainAxisAlignment.end,
-  children: [
-    ElevatedButton.icon(
-      onPressed: _exportToExcel,
-      icon: const Icon(Icons.file_download, size: 12),
-      label: const Text('Excel'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-    const SizedBox(width: 6),
-    ElevatedButton.icon(
-      onPressed: _printReport,
-      icon: const Icon(Icons.print, size: 12),
-      label: const Text('Print'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 8),
+                  // Excel and Print buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _exportToExcel,
+                        icon: const Icon(Icons.file_download, size: 12),
+                        label: const Text('Excel'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[800],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          textStyle: const TextStyle(fontSize: 10),
+                          minimumSize: const Size(60, 28),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      ElevatedButton.icon(
+                        onPressed: _printReport,
+                        icon: const Icon(Icons.print, size: 12),
+                        label: const Text('Print'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          textStyle: const TextStyle(fontSize: 10),
+                          minimumSize: const Size(60, 28),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   
                   // Main title and route title
                   if (mainTitle != null && mainTitle!.isNotEmpty) ...[
@@ -1233,7 +1233,6 @@ const SizedBox(height: 8),
                                 offset: const Offset(0, 1),
                               ),
                             ],
-                          
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -1298,18 +1297,21 @@ const SizedBox(height: 8),
                                             Text(capitalizeWords(report.customer.address),
                                             style: TextStyle(fontSize: 12)),
                                           ],
-                                          if (report.customer.gstNo.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                  Text(
-                         'GST No: ${report.customer.gstNo},',
-                          style: const TextStyle(fontSize: 12),
-                          ),
-                  ],
-                    const SizedBox(height: 4),
-          Text(
-                '${report.customer.state},${report.customer.stateCode}',
-                  style: const TextStyle(fontSize: 12),
-                ),
+                                          if (report.customer.gstNo.isNotEmpty && report.customer.gstNo != 'N/A') ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'GST: ${report.customer.gstNo}',
+                                              style: const TextStyle(fontSize: 12),
+                                            ),
+                                          ],
+                                          if (report.customer.state.isNotEmpty && report.customer.state != 'N/A' ||
+                                              report.customer.stateCode.isNotEmpty && report.customer.stateCode != 'N/A') ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${report.customer.state != 'N/A' ? report.customer.state : ''}${report.customer.state.isNotEmpty && report.customer.state != 'N/A' && report.customer.stateCode.isNotEmpty && report.customer.stateCode != 'N/A' ? ', ' : ''}${report.customer.stateCode != 'N/A' ? report.customer.stateCode : ''}',
+                                              style: const TextStyle(fontSize: 12),
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -1337,7 +1339,8 @@ const SizedBox(height: 8),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text('Notes: ${report.notes}',style: TextStyle(fontSize: 12),),
+                                if (report.notes.isNotEmpty)
+                                  Text('Notes: ${report.notes}', style: TextStyle(fontSize: 12)),
                               ],
                             ),
                           ),

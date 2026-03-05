@@ -439,7 +439,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppTheme.primaryColor,
               onPrimary: Colors.white,
               onSurface: Colors.black,
@@ -764,7 +764,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
                               ),
                               child: Text(
                                 'Qty: $quantity',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppTheme.primaryColor,
                                   fontWeight: FontWeight.bold,
                                 ),
