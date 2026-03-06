@@ -1282,7 +1282,7 @@ if (report.notes.isNotEmpty)
         ),
       ),
       bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 1,
+        selectedIndex: 0,
       ),
     );
   }

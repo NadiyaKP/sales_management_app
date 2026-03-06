@@ -84,7 +84,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
   void initState() {
     super.initState();
     _loadPunchInData();
-    _loadCustomers(); // Load customers for dropdown
+    _loadCustomers();
   }
 
   @override
@@ -93,7 +93,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
     super.dispose();
   }
 
-  // Load customers for dropdown
   Future<void> _loadCustomers() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -106,7 +105,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
       }
 
       final response = await http.post(
-        Uri.parse('$url/customers.php'), // Assuming this endpoint exists
+        Uri.parse('$url/customers.php'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -134,7 +133,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
       }
     } catch (e) {
       debugPrint("Error loading customers: $e");
-      // Continue without customers if API fails
     }
   }
 
@@ -153,9 +151,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
         throw Exception('Missing configuration data. Please login again.');
       }
 
-      debugPrint("Making API call to fetch punch-in data...");
-      debugPrint("URL: $url/punch-in.php");
-
       final response = await http.post(
         Uri.parse('$url/punch-in.php'),
         headers: {
@@ -164,7 +159,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
         body: jsonEncode({
           "unid": unid,
           "slex": slex,
-          "page": "", // Empty as per your API request
+          "page": "",
         }),
       ).timeout(
         const Duration(seconds: 30),
@@ -172,9 +167,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
           throw Exception('Request timeout - server took too long to respond');
         },
       );
-
-      debugPrint("API Response Status: ${response.statusCode}");
-      debugPrint("API Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
         if (response.body.isEmpty) {
@@ -185,7 +177,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
         try {
           responseData = json.decode(response.body);
         } catch (e) {
-          debugPrint("JSON decode error: $e");
           throw Exception('Invalid JSON response from server');
         }
 
@@ -200,11 +191,9 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
           setState(() {
             _punchIns = fetchedPunchIns;
             filteredPunchIns = _punchIns;
-            punchInsTotal = totalAttendance; // Use total from API
+            punchInsTotal = totalAttendance;
             isLoading = false;
           });
-
-          debugPrint("Successfully loaded ${fetchedPunchIns.length} punch-in records");
         } else {
           String message = responseData['message'] ?? 'Failed to load punch-in data';
           throw Exception(message);
@@ -231,8 +220,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
     setState(() {
       currentPage = newPage;
     });
-    // In a real paginated API, you would make another API call here
-    // For now, we're handling pagination client-side
   }
 
   void _showSearchDialog() {
@@ -291,21 +278,19 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
     );
 
     if (result != null) {
-      // Refresh the data when returning from punch-in
       _showSuccess('New punch-in added successfully!');
       _refreshData();
     }
   }
 
   void _editPunchIn(PunchIn punchIn) {
-    // Show edit dialog or navigate to edit page
     _showEditPunchInDialog(punchIn);
   }
 
   void _showEditPunchInDialog(PunchIn punchIn) {
     final TextEditingController locationController = TextEditingController(text: punchIn.location);
     final TextEditingController noteController = TextEditingController(text: punchIn.notes);
-    
+
     DateTime selectedDate = DateTime.now();
     try {
       selectedDate = DateFormat("dd/MM/yyyy").parse(punchIn.date);
@@ -313,7 +298,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
       selectedDate = DateTime.now();
     }
 
-    // Selected customer ID - initialize with current customer
     String? selectedCustomerId = punchIn.custid.isNotEmpty ? punchIn.custid : null;
     String selectedCustomerName = punchIn.custname;
 
@@ -371,7 +355,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
               });
 
               try {
-                // Call API to update punch-in record
                 await _updatePunchInRecord(
                   punchIn.attid,
                   selectedCustomerId!,
@@ -383,7 +366,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
 
                 Navigator.pop(context);
                 _showSuccess('Punch-in updated successfully');
-                _refreshData(); // Refresh the list
+                _refreshData();
               } catch (e) {
                 _showError('Failed to update: ${e.toString()}');
               } finally {
@@ -450,13 +433,11 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
                               decoration: inputDecoration('Customer Name *'),
                               isExpanded: true,
                               items: [
-                                // Add current customer if not in the list
                                 if (punchIn.custid.isNotEmpty && !_customers.any((c) => c.id == punchIn.custid))
                                   DropdownMenuItem<String>(
                                     value: punchIn.custid,
                                     child: Text(_capitalizeWords(punchIn.custname)),
                                   ),
-                                // Add all customers from the list
                                 ..._customers.map((customer) => DropdownMenuItem<String>(
                                   value: customer.id,
                                   child: Text(_capitalizeWords(customer.name)),
@@ -466,7 +447,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
                                 setDialogState(() {
                                   selectedCustomerId = newValue;
                                   if (newValue != null) {
-                                    // Find the customer name for the selected ID
                                     final customer = _customers.firstWhere(
                                       (c) => c.id == newValue,
                                       orElse: () => Customer(id: newValue, name: punchIn.custname),
@@ -578,19 +558,14 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
         throw Exception('Missing configuration data');
       }
 
-      // Format date to match API expected format (if needed)
-      String formattedDate = DateFormat("dd/MM/yyyy").format(date);
-
       final requestBody = {
         "unid": unid,
         "slex": slex,
-        "customer_name": customerName, // Fixed: Changed from "custname" to "customer_name"
+        "customer_name": customerName,
         "cust_id": customerId,
         "action": "update",
         "attid": attid,
         "notes": notes,
-        // Removed date and location as they're not in the Postman example
-        // Add them back if your API supports them
       };
 
       debugPrint("Update request body: ${jsonEncode(requestBody)}");
@@ -607,9 +582,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
           throw Exception('Request timeout');
         },
       );
-
-      debugPrint("Update response status: ${response.statusCode}");
-      debugPrint("Update response body: ${response.body}");
 
       if (response.statusCode == 200) {
         Map<String, dynamic> responseData = json.decode(response.body);
@@ -635,11 +607,10 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              
               try {
                 await _deletePunchInRecord(punchIn.attid);
                 _showSuccess('The selected details has been deleted successfully.');
-                _refreshData(); // Refresh the list
+                _refreshData();
               } catch (e) {
                 _showError('Failed to delete: ${e.toString()}');
               }
@@ -689,9 +660,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
           throw Exception('Request timeout');
         },
       );
-
-      debugPrint("Delete response status: ${response.statusCode}");
-      debugPrint("Delete response body: ${response.body}");
 
       if (response.statusCode == 200) {
         Map<String, dynamic> responseData = json.decode(response.body);
@@ -768,7 +736,6 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
       ),
       body: Column(
         children: [
-          // Show total count
           if (punchInsTotal > 0)
             Container(
               padding: const EdgeInsets.all(8),
@@ -793,7 +760,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          searchQuery.isNotEmpty 
+                          searchQuery.isNotEmpty
                               ? 'No punch-in records found for "$searchQuery".'
                               : 'No punch-in records found.',
                           style: const TextStyle(
@@ -836,10 +803,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildRow('Customer', _capitalizeWords(punchIn.custname)),
-                                _buildRow(
-                                  'Date',
-                                  _formatDate(punchIn.date),
-                                ),
+                                _buildRow('Date', _formatDate(punchIn.date)),
                                 _buildRow('Location', _capitalizeWords(punchIn.location)),
                                 _buildRow('Notes', _capitalizeWords(punchIn.notes.isEmpty ? 'No notes' : punchIn.notes)),
                                 const SizedBox(height: 16),
@@ -891,27 +855,35 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
     );
   }
 
+  // ── Matches discounts_page.dart exactly ──────────────────────────────────
   Widget _buildActionButton({
     required IconData icon,
     required String label,
     required Color backgroundColor,
     required VoidCallback onPressed,
   }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 16, color: Colors.white),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 12, color: Colors.white),
+    return SizedBox(
+      height: 32,
+      child: ElevatedButton.icon(
+        icon: Icon(icon, size: 14, color: Colors.white),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.white),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+        onPressed: onPressed,
       ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: Size.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      onPressed: onPressed,
     );
   }
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildRow(String label, String value, {Color? color}) {
     return Padding(
@@ -939,7 +911,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
       DateTime parsedDate = DateFormat("dd/MM/yyyy").parse(dateStr);
       return DateFormat.yMMMMd().format(parsedDate);
     } catch (e) {
-      return dateStr; // Return original if parsing fails
+      return dateStr;
     }
   }
 }

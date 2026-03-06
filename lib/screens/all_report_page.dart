@@ -157,7 +157,7 @@ class _AllReportPageState extends State<AllReportPage> {
         ),
       ),
        bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 1, // Home page is at index 0
+        selectedIndex: 0, // Home page is at index 0
       ),
     );
   }

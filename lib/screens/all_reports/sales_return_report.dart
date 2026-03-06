@@ -19,6 +19,7 @@ import '../report_page.dart';
 import '../all_report_page.dart';
 import '../sales_return/sales_return_view.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../common/bottom_navigation_button.dart';
 
 // Global permission variables
 String salesReturnReport = '';
@@ -1063,18 +1064,8 @@ const SizedBox(height: 8),
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Reports'),
-          BottomNavigationBarItem(icon: Icon(Icons.access_time), label: 'Profile'),
-          BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Logout'),
-        ],
+       bottomNavigationBar: const BottomNavigationButton(
+        selectedIndex: 0,
       ),
     );
   }

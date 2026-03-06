@@ -464,7 +464,7 @@ class _AccountLedgerPageState extends State<AccountLedgerPage> {
         ),
       ),
       bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 1,
+        selectedIndex: 0,
       ),
     );
   }

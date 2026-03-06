@@ -83,6 +83,9 @@ class MyHttpOverrides extends HttpOverrides {
   }
 }
 
+// API Base URL - Keeping it as a constant in the code
+const String url = 'http://192.168.1.108:80/gst-3-3-production/mobile-service/sales-executive';
+
 // Print all SharedPreferences data
 Future<void> printAllSharedPreferences() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -118,12 +121,6 @@ Future<void> fetchAndPrintPermissions() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = MyHttpOverrides();
-
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  if (!prefs.containsKey('url')) {
-    await prefs.setString(
-        'url', 'http://192.168.1.108:80/gst-3-3-production/mobile-service/sales-executive');
-  }
 
   // Orientation
   await SystemChrome.setPreferredOrientations([

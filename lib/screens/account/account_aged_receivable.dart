@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -38,7 +38,8 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
   late DateTime _fromDate;
   late DateTime _toDate;
   
-  List<AgedReceivableRecord> agedReceivableRecords = [];
+  List<InvoiceDue> invoiceList = [];
+  double totalBalanceDue = 0.0;
   String? headerTitle;
   bool isLoading = false;
 
@@ -65,7 +66,6 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     _fromDate = widget.fromDate ?? DateTime(DateTime.now().year, DateTime.now().month, 1);
     _toDate = widget.toDate ?? DateTime.now();
     
-    
     _fromDateController.text = DateFormat('dd-MM-yyyy').format(_fromDate);
     _toDateController.text = DateFormat('dd-MM-yyyy').format(_toDate);
     
@@ -84,6 +84,8 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     
     setState(() {
       isLoading = true;
+      invoiceList = [];
+      totalBalanceDue = 0.0;
     });
     
     try {
@@ -93,6 +95,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
       String? slex = prefs.getString('slex');
 
       if (url == null || unid == null || slex == null) {
+        setState(() => isLoading = false);
         _showError('Missing configuration data. Please check your settings.');
         return;
       }
@@ -108,43 +111,100 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
         "style": "aged",
       };
 
+      print('\n' + '=' * 50);
+      print('AGED RECEIVABLE API REQUEST:');
+      print('URL: $url/account-ledger.php');
+      print('Customer: $_customerName (ID: $_custId)');
+      print('Date range: ${_fromDateController.text} to ${_toDateController.text}');
+      print('Body: ${jsonEncode(requestBody)}');
+      print('=' * 50);
+
       final response = await http.post(
         Uri.parse('$url/account-ledger.php'),
         headers: {
           'Content-Type': 'application/json',
         },
         body: jsonEncode(requestBody),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your internet connection.');
+        },
       );
       
+      print('\n' + '=' * 50);
+      print('AGED RECEIVABLE API RESPONSE:');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body:');
+      print(response.body);
+      print('=' * 50 + '\n');
+      
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] == "1") {
-          final List<dynamic> agedReceivablesList = data['agedcartdet'] ?? [];
+        if (response.body.isEmpty) {
+          setState(() => isLoading = false);
+          _showError('Received empty response from server');
+          return;
+        }
+
+        try {
+          String cleanResponse = response.body.trim();
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'^\uFEFF'), '');
           
-          setState(() {
-            agedReceivableRecords = agedReceivablesList
-                .map((json) => AgedReceivableRecord.fromJson(json))
-                .toList();
-            headerTitle = data['hdr_name'];
-          });
+          final data = jsonDecode(cleanResponse);
           
-          if (agedReceivablesList.isEmpty) {
-            _showError('No aged receivable records found for $_customerName in the selected date range');
+          if (data['result'] == "1") {
+            final List<dynamic> agedCartDet = data['agedcartdet'] ?? [];
+            
+            if (agedCartDet.isNotEmpty) {
+              final customerData = agedCartDet[0];
+              final List<dynamic> invoiceDueList = customerData['customer_invoice_due'] ?? [];
+              
+              setState(() {
+                invoiceList = invoiceDueList
+                    .map((json) => InvoiceDue.fromJson(json))
+                    .toList();
+                totalBalanceDue = (customerData['customer_ttl_bln_due'] as num?)?.toDouble() ?? 0.0;
+                headerTitle = data['hdr_name']?.toString();
+                isLoading = false;
+              });
+              
+              if (invoiceDueList.isEmpty) {
+                _showInfo('No aged receivable records found for $_customerName in the selected date range');
+              }
+            } else {
+              setState(() => isLoading = false);
+              _showInfo('No aged receivable data found');
+            }
+          } else {
+            setState(() => isLoading = false);
+            _showError(data['message'] ?? 'Failed to fetch aged receivable data.');
           }
-        } else {
-          _showError(data['message'] ?? 'Failed to fetch aged receivable data.');
+        } catch (e) {
+          print('JSON Decode Error: $e');
+          setState(() => isLoading = false);
+          _showError('Error processing server response: ${e.toString()}');
         }
       } else {
+        setState(() => isLoading = false);
         _showError('Server error: ${response.statusCode}. Please try again later.');
       }
     } catch (error) {
-      _showError('Network error occurred. Please check your connection and try again.');
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+      setState(() => isLoading = false);
+      print('\n' + '=' * 50);
+      print('AGED RECEIVABLE API ERROR:');
+      print('Error: $error');
+      print('=' * 50 + '\n');
+      
+      String errorMessage = 'An error occurred';
+      if (error.toString().contains('timeout')) {
+        errorMessage = 'Connection timeout. Please check your internet connection.';
+      } else if (error.toString().contains('SocketException')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else {
+        errorMessage = 'Error: $error';
       }
+      
+      _showError(errorMessage);
     }
   }
 
@@ -156,6 +216,25 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
         content: Text(message),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () {
+            setState(() => isLoading = true);
+            _fetchAgedReceivableData();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showInfo(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -166,6 +245,7 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -223,7 +303,6 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     return amount.toStringAsFixed(2);
   }
 
-  // Check if permission handler is available
   Future<bool> _isPermissionHandlerAvailable() async {
     try {
       await Permission.storage.status;
@@ -234,7 +313,6 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     }
   }
 
-  // Robust permission checking method
   Future<bool> _checkStoragePermission() async {
     try {
       bool isAvailable = await _isPermissionHandlerAvailable();
@@ -276,7 +354,6 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     }
   }
 
-  // Show export options dialog
   void _showExportOptions() {
     showDialog(
       context: context,
@@ -309,9 +386,8 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     );
   }
 
-  // Export to external storage (Downloads folder)
   Future<void> _exportToExcelExternal() async {
-    if (agedReceivableRecords.isEmpty) {
+    if (invoiceList.isEmpty) {
       _showError('No data available to export');
       return;
     }
@@ -353,14 +429,15 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
 
       // Add headers
       sheetObject.cell(CellIndex.indexByString("A1")).value = 'SI.No.';
-      sheetObject.cell(CellIndex.indexByString("B1")).value = 'Invoice Date';
-      sheetObject.cell(CellIndex.indexByString("C1")).value = 'Invoice No';
-      sheetObject.cell(CellIndex.indexByString("D1")).value = 'Description';
-      sheetObject.cell(CellIndex.indexByString("E1")).value = 'Outstanding Amount';
-      sheetObject.cell(CellIndex.indexByString("F1")).value = 'Days Outstanding';
+      sheetObject.cell(CellIndex.indexByString("B1")).value = 'Invoice No';
+      sheetObject.cell(CellIndex.indexByString("C1")).value = 'Invoice Date';
+      sheetObject.cell(CellIndex.indexByString("D1")).value = 'Due Days';
+      sheetObject.cell(CellIndex.indexByString("E1")).value = 'Invoice Amount';
+      sheetObject.cell(CellIndex.indexByString("F1")).value = 'Receipt Amount';
+      sheetObject.cell(CellIndex.indexByString("G1")).value = 'Balance Due';
 
       // Style headers
-      for (String cellName in ['A1', 'B1', 'C1', 'D1', 'E1', 'F1']) {
+      for (String cellName in ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1']) {
         var cell = sheetObject.cell(CellIndex.indexByString(cellName));
         cell.cellStyle = CellStyle(
           bold: true,
@@ -370,33 +447,31 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
       }
 
       // Add data rows
-      for (int i = 0; i < agedReceivableRecords.length; i++) {
-        final record = agedReceivableRecords[i];
+      for (int i = 0; i < invoiceList.length; i++) {
+        final record = invoiceList[i];
         final rowIndex = i + 2;
         
         sheetObject.cell(CellIndex.indexByString("A$rowIndex")).value = i + 1;
-        sheetObject.cell(CellIndex.indexByString("B$rowIndex")).value = record.invoiceDate;
-        sheetObject.cell(CellIndex.indexByString("C$rowIndex")).value = record.invoiceNumber;
-        sheetObject.cell(CellIndex.indexByString("D$rowIndex")).value = record.description;
-        sheetObject.cell(CellIndex.indexByString("E$rowIndex")).value = formatCurrencyForPrint(record.outstandingAmount);
-        sheetObject.cell(CellIndex.indexByString("F$rowIndex")).value = record.daysOutstanding;
+        sheetObject.cell(CellIndex.indexByString("B$rowIndex")).value = record.invoiceNo;
+        sheetObject.cell(CellIndex.indexByString("C$rowIndex")).value = record.invoiceDate;
+        sheetObject.cell(CellIndex.indexByString("D$rowIndex")).value = record.dueDays;
+        sheetObject.cell(CellIndex.indexByString("E$rowIndex")).value = double.parse(record.invoiceAmount);
+        sheetObject.cell(CellIndex.indexByString("F$rowIndex")).value = double.parse(record.receiptAmount);
+        sheetObject.cell(CellIndex.indexByString("G$rowIndex")).value = double.parse(record.balanceDue);
       }
 
       // Add summary row
-      final summaryRow = agedReceivableRecords.length + 2;
+      final summaryRow = invoiceList.length + 2;
       sheetObject.cell(CellIndex.indexByString("A$summaryRow")).value = '';
       sheetObject.cell(CellIndex.indexByString("B$summaryRow")).value = '';
       sheetObject.cell(CellIndex.indexByString("C$summaryRow")).value = '';
-      sheetObject.cell(CellIndex.indexByString("D$summaryRow")).value = 'Total Outstanding:';
-      sheetObject.cell(CellIndex.indexByString("E$summaryRow")).value = formatCurrencyForPrint(
-        agedReceivableRecords.fold(0.0, (sum, record) {
-          return sum + (double.tryParse(record.outstandingAmount.replaceAll(',', '')) ?? 0.0);
-        }).toString()
-      );
+      sheetObject.cell(CellIndex.indexByString("D$summaryRow")).value = '';
+      sheetObject.cell(CellIndex.indexByString("E$summaryRow")).value = 'Total Balance Due:';
       sheetObject.cell(CellIndex.indexByString("F$summaryRow")).value = '';
+      sheetObject.cell(CellIndex.indexByString("G$summaryRow")).value = totalBalanceDue;
 
       // Style summary row
-      for (String cellName in ['A$summaryRow', 'B$summaryRow', 'C$summaryRow', 'D$summaryRow', 'E$summaryRow', 'F$summaryRow']) {
+      for (String cellName in ['A$summaryRow', 'B$summaryRow', 'C$summaryRow', 'D$summaryRow', 'E$summaryRow', 'F$summaryRow', 'G$summaryRow']) {
         var cell = sheetObject.cell(CellIndex.indexByString(cellName));
         cell.cellStyle = CellStyle(
           bold: true,
@@ -474,9 +549,8 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     }
   }
 
-  // Export to app's internal storage
   Future<void> _exportToExcelInternal() async {
-    if (agedReceivableRecords.isEmpty) {
+    if (invoiceList.isEmpty) {
       _showError('No data available to export');
       return;
     }
@@ -487,14 +561,15 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
 
       // Add headers
       sheetObject.cell(CellIndex.indexByString("A1")).value = 'SI.No.';
-      sheetObject.cell(CellIndex.indexByString("B1")).value = 'Invoice Date';
-      sheetObject.cell(CellIndex.indexByString("C1")).value = 'Invoice No';
-      sheetObject.cell(CellIndex.indexByString("D1")).value = 'Description';
-      sheetObject.cell(CellIndex.indexByString("E1")).value = 'Outstanding Amount';
-      sheetObject.cell(CellIndex.indexByString("F1")).value = 'Days Outstanding';
+      sheetObject.cell(CellIndex.indexByString("B1")).value = 'Invoice No';
+      sheetObject.cell(CellIndex.indexByString("C1")).value = 'Invoice Date';
+      sheetObject.cell(CellIndex.indexByString("D1")).value = 'Due Days';
+      sheetObject.cell(CellIndex.indexByString("E1")).value = 'Invoice Amount';
+      sheetObject.cell(CellIndex.indexByString("F1")).value = 'Receipt Amount';
+      sheetObject.cell(CellIndex.indexByString("G1")).value = 'Balance Due';
 
       // Style headers
-      for (String cellName in ['A1', 'B1', 'C1', 'D1', 'E1', 'F1']) {
+      for (String cellName in ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1']) {
         var cell = sheetObject.cell(CellIndex.indexByString(cellName));
         cell.cellStyle = CellStyle(
           bold: true,
@@ -504,33 +579,31 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
       }
 
       // Add data rows
-      for (int i = 0; i < agedReceivableRecords.length; i++) {
-        final record = agedReceivableRecords[i];
+      for (int i = 0; i < invoiceList.length; i++) {
+        final record = invoiceList[i];
         final rowIndex = i + 2;
         
         sheetObject.cell(CellIndex.indexByString("A$rowIndex")).value = i + 1;
-        sheetObject.cell(CellIndex.indexByString("B$rowIndex")).value = record.invoiceDate;
-        sheetObject.cell(CellIndex.indexByString("C$rowIndex")).value = record.invoiceNumber;
-        sheetObject.cell(CellIndex.indexByString("D$rowIndex")).value = record.description;
-        sheetObject.cell(CellIndex.indexByString("E$rowIndex")).value = formatCurrencyForPrint(record.outstandingAmount);
-        sheetObject.cell(CellIndex.indexByString("F$rowIndex")).value = record.daysOutstanding;
+        sheetObject.cell(CellIndex.indexByString("B$rowIndex")).value = record.invoiceNo;
+        sheetObject.cell(CellIndex.indexByString("C$rowIndex")).value = record.invoiceDate;
+        sheetObject.cell(CellIndex.indexByString("D$rowIndex")).value = record.dueDays;
+        sheetObject.cell(CellIndex.indexByString("E$rowIndex")).value = double.parse(record.invoiceAmount);
+        sheetObject.cell(CellIndex.indexByString("F$rowIndex")).value = double.parse(record.receiptAmount);
+        sheetObject.cell(CellIndex.indexByString("G$rowIndex")).value = double.parse(record.balanceDue);
       }
 
       // Add summary row
-      final summaryRow = agedReceivableRecords.length + 2;
+      final summaryRow = invoiceList.length + 2;
       sheetObject.cell(CellIndex.indexByString("A$summaryRow")).value = '';
       sheetObject.cell(CellIndex.indexByString("B$summaryRow")).value = '';
       sheetObject.cell(CellIndex.indexByString("C$summaryRow")).value = '';
-      sheetObject.cell(CellIndex.indexByString("D$summaryRow")).value = 'Total Outstanding:';
-      sheetObject.cell(CellIndex.indexByString("E$summaryRow")).value = formatCurrencyForPrint(
-        agedReceivableRecords.fold(0.0, (sum, record) {
-          return sum + (double.tryParse(record.outstandingAmount.replaceAll(',', '')) ?? 0.0);
-        }).toString()
-      );
+      sheetObject.cell(CellIndex.indexByString("D$summaryRow")).value = '';
+      sheetObject.cell(CellIndex.indexByString("E$summaryRow")).value = 'Total Balance Due:';
       sheetObject.cell(CellIndex.indexByString("F$summaryRow")).value = '';
+      sheetObject.cell(CellIndex.indexByString("G$summaryRow")).value = totalBalanceDue;
 
       // Style summary row
-      for (String cellName in ['A$summaryRow', 'B$summaryRow', 'C$summaryRow', 'D$summaryRow', 'E$summaryRow', 'F$summaryRow']) {
+      for (String cellName in ['A$summaryRow', 'B$summaryRow', 'C$summaryRow', 'D$summaryRow', 'E$summaryRow', 'F$summaryRow', 'G$summaryRow']) {
         var cell = sheetObject.cell(CellIndex.indexByString(cellName));
         cell.cellStyle = CellStyle(
           bold: true,
@@ -559,9 +632,8 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     }
   }
 
-  // Main export method - chooses the best option automatically
   Future<void> _exportToExcel() async {
-    if (agedReceivableRecords.isEmpty) {
+    if (invoiceList.isEmpty) {
       _showError('No data available to export');
       return;
     }
@@ -598,9 +670,8 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     }
   }
 
-  // Print Functionality
   Future<void> _printReport() async {
-    if (agedReceivableRecords.isEmpty) {
+    if (invoiceList.isEmpty) {
       _showError('No data available to print');
       return;
     }
@@ -608,26 +679,22 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     try {
       final pdf = pw.Document();
       
-      // Calculate total outstanding
-      double totalOutstanding = agedReceivableRecords.fold(0.0, (sum, record) {
-        return sum + (double.tryParse(record.outstandingAmount.replaceAll(',', '')) ?? 0.0);
-      });
-
       // Create table data
       final List<List<String>> tableData = [
-        ['SI.No.', 'Invoice Date', 'Invoice No', 'Description', 'Outstanding Amount', 'Days Outstanding'], // Header
+        ['SI.No.', 'Invoice No', 'Invoice Date', 'Due Days', 'Invoice Amt', 'Receipt Amt', 'Balance Due'], // Header
       ];
       
       // Add data rows
-      for (int i = 0; i < agedReceivableRecords.length; i++) {
-        final record = agedReceivableRecords[i];
+      for (int i = 0; i < invoiceList.length; i++) {
+        final record = invoiceList[i];
         tableData.add([
           (i + 1).toString(),
+          record.invoiceNo,
           record.invoiceDate,
-          record.invoiceNumber,
-          record.description,
-          formatCurrencyForPrint(record.outstandingAmount),
-          record.daysOutstanding.toString(),
+          record.dueDays.toString(),
+          double.parse(record.invoiceAmount).toStringAsFixed(2),
+          double.parse(record.receiptAmount).toStringAsFixed(2),
+          double.parse(record.balanceDue).toStringAsFixed(2),
         ]);
       }
 
@@ -701,9 +768,9 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                 data: tableData,
                 headerStyle: pw.TextStyle(
                   fontWeight: pw.FontWeight.bold,
-                  fontSize: 10,
+                  fontSize: 8,
                 ),
-                cellStyle: const pw.TextStyle(fontSize: 8),
+                cellStyle: const pw.TextStyle(fontSize: 7),
                 headerDecoration: const pw.BoxDecoration(
                   color: PdfColors.grey300,
                 ),
@@ -711,17 +778,19 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                   0: pw.Alignment.center,
                   1: pw.Alignment.centerLeft,
                   2: pw.Alignment.centerLeft,
-                  3: pw.Alignment.centerLeft,
+                  3: pw.Alignment.center,
                   4: pw.Alignment.centerRight,
-                  5: pw.Alignment.center,
+                  5: pw.Alignment.centerRight,
+                  6: pw.Alignment.centerRight,
                 },
                 columnWidths: {
-                  0: const pw.FixedColumnWidth(30),
-                  1: const pw.FixedColumnWidth(70),
-                  2: const pw.FixedColumnWidth(70),
-                  3: const pw.FixedColumnWidth(120),
-                  4: const pw.FixedColumnWidth(70),
-                  5: const pw.FixedColumnWidth(50),
+                  0: const pw.FixedColumnWidth(25),
+                  1: const pw.FixedColumnWidth(60),
+                  2: const pw.FixedColumnWidth(60),
+                  3: const pw.FixedColumnWidth(30),
+                  4: const pw.FixedColumnWidth(40),
+                  5: const pw.FixedColumnWidth(40),
+                  6: const pw.FixedColumnWidth(40),
                 },
               ),
 
@@ -734,11 +803,11 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
                     pw.Divider(),
                     pw.SizedBox(height: 8),
                     pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: pw.MainAxisAlignment.end,
                       children: [
-                        pw.Text('Total Outstanding Amount:', 
+                        pw.Text('Total Balance Due: ', 
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
-                        pw.Text(formatCurrencyForPrint(totalOutstanding.toString()), 
+                        pw.Text(totalBalanceDue.toStringAsFixed(2), 
                           style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
                       ],
                     ),
@@ -778,14 +847,21 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
     }
   }
 
-  Color _getAgeColor(int days) {
+  Color _getDueDaysColor(int days) {
     if (days <= 30) {
       return Colors.green;
     } else if (days <= 60) {
       return Colors.orange;
+    } else if (days <= 90) {
+      return Colors.deepOrange;
     } else {
       return Colors.red;
     }
+  }
+
+  String _formatCurrency(String amount) {
+    double value = double.tryParse(amount) ?? 0.0;
+    return '₹ ${value.toStringAsFixed(2)}';
   }
 
   @override
@@ -809,382 +885,594 @@ class _AccountAgedReceivablePageState extends State<AccountAgedReceivablePage> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Date Selection Row
-            Row(
-  children: [
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'From Date',
-            style: TextStyle(
-              fontSize: 10, 
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 6), 
-          Container(
-            height: 36, 
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6), 
-            ),
-            child: TextField(
-              controller: _fromDateController,
-              style: const TextStyle(
-                fontSize: 11, 
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12, 
-                  vertical: 8,    
-                ),
-                suffixIcon: Icon(
-                  Icons.calendar_today, 
-                  color: Colors.grey,
-                  size: 16, 
-                ),
-                isDense: true, 
-              ),
-              readOnly: true,
-              onTap: () => _selectDate(context, _fromDateController, true),
-            ),
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 12), 
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'To Date',
-            style: TextStyle(
-              fontSize: 10, 
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 6), 
-          Container(
-            height: 36, 
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6), 
-            ),
-            child: TextField(
-              controller: _toDateController,
-              style: const TextStyle(
-                fontSize: 11, 
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12, 
-                  vertical: 8,    
-                ),
-                suffixIcon: Icon(
-                  Icons.calendar_today, 
-                  color: Colors.grey,
-                  size: 16, 
-                ),
-                isDense: true,
-              ),
-              readOnly: true,
-              onTap: () => _selectDate(context, _toDateController, false),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ],
-),
-
-            const SizedBox(height: 16),
-
-            // Excel and Print buttons
-Row(
-  mainAxisAlignment: MainAxisAlignment.end,
-  children: [
-    ElevatedButton.icon(
-      onPressed: _exportToExcel,
-      icon: const Icon(Icons.file_download, size: 12),
-      label: const Text('Excel'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-    const SizedBox(width: 6),
-    ElevatedButton.icon(
-      onPressed: _printReport,
-      icon: const Icon(Icons.print, size: 12),
-      label: const Text('Print'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 8),
-            // Report Title  
-            Center(
-              child: Text(
-                headerTitle?.replaceAll('&amp;', '&') ?? 
-                'Aged Receivable Report From ${_fromDateController.text} To ${_toDateController.text}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            
-            if (isLoading)
-              Center(
-                child: Column(
+      body: isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date Selection Row
+                Row(
                   children: [
-                    CircularProgressIndicator(
-                      color: Theme.of(context).primaryColor,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Loading aged receivable data...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else if (agedReceivableRecords.isEmpty)
-              Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 64,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No aged receivable records found for $_customerName\nin the selected date range.',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_fromDateController.text} to ${_toDateController.text}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                  ],
-                ),
-              )
-            else
-              // Aged Receivable Records List
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Aged Receivable Records (${agedReceivableRecords.length})',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...agedReceivableRecords.map((record) => Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                     
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Invoice #${record.invoiceNumber}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.orange.shade700,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                record.invoiceDate,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Outstanding Amount:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                              ),
-                            ),
-                            Text(
-                              '₹${record.outstandingAmount}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Days Outstanding:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getAgeColor(record.daysOutstanding).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '${record.daysOutstanding} days',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _getAgeColor(record.daysOutstanding),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (record.description.isNotEmpty) ...[
-                          const SizedBox(height: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           const Text(
-                            'Description:',
+                            'From Date',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10, 
                               fontWeight: FontWeight.w500,
                               color: Colors.black87,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6), 
                           Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
+                            height: 36, 
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                             
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6), 
                             ),
-                            child: Text(
-                              record.description,
+                            child: TextField(
+                              controller: _fromDateController,
                               style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                                height: 1.4,
+                                fontSize: 11, 
                               ),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, 
+                                  vertical: 8,    
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.calendar_today, 
+                                  color: Colors.grey,
+                                  size: 16, 
+                                ),
+                                isDense: true, 
+                              ),
+                              readOnly: true,
+                              onTap: () => _selectDate(context, _fromDateController, true),
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(width: 12), 
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'To Date',
+                            style: TextStyle(
+                              fontSize: 10, 
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 6), 
+                          Container(
+                            height: 36, 
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6), 
+                            ),
+                            child: TextField(
+                              controller: _toDateController,
+                              style: const TextStyle(
+                                fontSize: 11, 
+                              ),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, 
+                                  vertical: 8,    
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.calendar_today, 
+                                  color: Colors.grey,
+                                  size: 16, 
+                                ),
+                                isDense: true,
+                              ),
+                              readOnly: true,
+                              onTap: () => _selectDate(context, _toDateController, false),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Excel and Print buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _exportToExcel,
+                      icon: const Icon(Icons.file_download, size: 12),
+                      label: const Text('Excel'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[800],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ElevatedButton.icon(
+                      onPressed: _printReport,
+                      icon: const Icon(Icons.print, size: 12),
+                      label: const Text('Print'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                
+                // Report Title  
+                Center(
+                  child: Text(
+                    headerTitle?.replaceAll('&amp;', '&') ?? 
+                    'Aged Receivable Report From ${_fromDateController.text} To ${_toDateController.text}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Loading or Empty State or Records
+                if (invoiceList.isEmpty)
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No aged receivable records found for $_customerName\nin the selected date range.',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_fromDateController.text} to ${_toDateController.text}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
-                  )).toList(),
-                ],
-              ),
+                  )
+                else
+                  // Aged Receivable Records List
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Summary Card with Total Balance
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.blue.shade700, Colors.blue.shade900],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withOpacity(0.3),
+                              spreadRadius: 2,
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Total Balance Due',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _formatCurrency(totalBalanceDue.toString()),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${invoiceList.length} Invoice(s) Pending',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
+                      // Invoice List Title
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Invoice Details',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Total: ${invoiceList.length}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Invoice Cards
+                      ...invoiceList.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final record = entry.value;
+                        final dueDaysColor = _getDueDaysColor(record.dueDays);
+                        
+                        return Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                spreadRadius: 2,
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              // Header with Invoice Number and Due Days
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(16),
+                                    topRight: Radius.circular(16),
+                                  ),
+                                  border: const Border(
+                                    bottom: BorderSide(
+                                      color: Color(0xFFE0E0E0),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 28,
+                                            height: 28,
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryColor.withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                '${index + 1}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: AppTheme.primaryColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  record.invoiceNo == 'Opening Balance' 
+                                                      ? 'OPENING BALANCE'
+                                                      : 'INVOICE #${record.invoiceNo}',
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'Date: ${record.invoiceDate}',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: dueDaysColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: dueDaysColor.withOpacity(0.3),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.access_time,
+                                            size: 14,
+                                            color: dueDaysColor,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${record.dueDays} days',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: dueDaysColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Amount Details
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: [
+                                    // Invoice Amount Row
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.receipt,
+                                              size: 16,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Invoice Amount:',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey.shade700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Text(
+                                          _formatCurrency(record.invoiceAmount),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Receipt Amount Row
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.payment,
+                                              size: 16,
+                                              color: Colors.green.shade600,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Receipt Amount:',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey.shade700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Text(
+                                          _formatCurrency(record.receiptAmount),
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.green.shade700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Divider
+                                    Divider(
+                                      color: Colors.grey.shade300,
+                                      thickness: 1,
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Balance Due Row
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.account_balance_wallet,
+                                              size: 16,
+                                              color: Colors.orange.shade700,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Balance Due:',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey.shade800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Text(
+                                          _formatCurrency(record.balanceDue),
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Footer with Invoice ID (if not Opening Balance)
+                              if (record.invoiceNo != 'Opening Balance')
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: const BorderRadius.only(
+                                      bottomLeft: Radius.circular(16),
+                                      bottomRight: Radius.circular(16),
+                                    ),
+                                    border: const Border(
+                                      top: BorderSide(
+                                        color: Color(0xFFE0E0E0),
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        size: 14,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Invoice ID: ${record.invoiceId}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
     );
   }
 }
 
-// Data Model for Aged Receivable Record
-class AgedReceivableRecord {
-  final int slNo;
+// Updated Data Model for Invoice Due
+class InvoiceDue {
+  final String invoiceId;
+  final String invoiceNo;
   final String invoiceDate;
-  final String invoiceNumber;
-  final String description;
-  final String outstandingAmount;
-  final int daysOutstanding;
+  final int dueDays;
+  final String invoiceAmount;
+  final String receiptAmount;
+  final String balanceDue;
 
-  AgedReceivableRecord({
-    required this.slNo,
+  InvoiceDue({
+    required this.invoiceId,
+    required this.invoiceNo,
     required this.invoiceDate,
-    required this.invoiceNumber,
-    required this.description,
-    required this.outstandingAmount,
-    required this.daysOutstanding,
+    required this.dueDays,
+    required this.invoiceAmount,
+    required this.receiptAmount,
+    required this.balanceDue,
   });
 
-  factory AgedReceivableRecord.fromJson(Map<String, dynamic> json) {
-    return AgedReceivableRecord(
-      slNo: json['sl_no'] ?? 0,
-      invoiceDate: json['invoice_date'] ?? '',
-      invoiceNumber: json['invoice_number'] ?? '',
-      description: json['description'] ?? '',
-      outstandingAmount: json['outstanding_amount'] ?? '0.00',
-      daysOutstanding: json['days_outstanding'] ?? 0,
+  factory InvoiceDue.fromJson(Map<String, dynamic> json) {
+    return InvoiceDue(
+      invoiceId: json['inv_id']?.toString() ?? '',
+      invoiceNo: json['inv_no']?.toString() ?? '',
+      invoiceDate: json['inv_date']?.toString() ?? '',
+      dueDays: json['due_days'] ?? 0,
+      invoiceAmount: json['inv_amt']?.toString() ?? '0.00',
+      receiptAmount: json['rcp_amt']?.toString() ?? '0.00',
+      balanceDue: json['bln_due']?.toString() ?? '0.00',
     );
   }
 }

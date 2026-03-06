@@ -11,7 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
-import '../../theme/app_theme.dart'; 
+import '../../theme/app_theme.dart';
 
 class AccountDiscountPage extends StatefulWidget {
   final String? customerName;
@@ -95,6 +95,7 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
       String? slex = prefs.getString('slex');
 
       if (url == null || unid == null || slex == null) {
+        setState(() => isLoading = false);
         _showError('Missing configuration data. Please check your settings.');
         return;
       }
@@ -109,46 +110,133 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
         "style": "discount",
       };
 
+      print('\n' + '=' * 50);
+      print('DISCOUNT API REQUEST:');
+      print('URL: $url/account-ledger.php');
+      print('Customer: $_customerName (ID: $_custId)');
+      print('Date range: ${_fromDateController.text} to ${_toDateController.text}');
+      print('Body: ${jsonEncode(requestBody)}');
+      print('=' * 50);
+
       final response = await http.post(
         Uri.parse('$url/account-ledger.php'),
         headers: {
           'Content-Type': 'application/json',
         },
         body: jsonEncode(requestBody),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your internet connection.');
+        },
       );
       
+      print('\n' + '=' * 50);
+      print('DISCOUNT API RESPONSE:');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body Length: ${response.body.length} characters');
+      print('Full Response Body:');
+      print(response.body);
+      print('=' * 50 + '\n');
+      
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] == "1") {
-          final List<dynamic> discountsList = data['discounts'] ?? [];
-          final Map<String, dynamic> totals = data['totals'] ?? {};
+        // Check if response body is empty
+        if (response.body.isEmpty) {
+          setState(() => isLoading = false);
+          _showError('Received empty response from server');
+          return;
+        }
+
+        try {
+          // First, try to clean the response body if needed
+          String cleanResponse = response.body.trim();
           
-          setState(() {
-            discountRecords = discountsList
-                .map((json) => DiscountRecord.fromJson(json))
-                .toList();
-            headerTitle = data['hdr_name'];
-            totalReceivedAmount = totals['total_received_amount'] ?? '0.00';
-            totalGivenAmount = totals['total_given_amount'] ?? '0.00';
-          });
+          // Remove any possible BOM or control characters at the start
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'^\uFEFF'), '');
           
-          if (discountsList.isEmpty) {
-            _showError('No discount records found for $_customerName in the selected date range');
+          final data = jsonDecode(cleanResponse);
+          
+          if (data['result'] == "1") {
+            final List<dynamic> discountsList = data['discounts'] ?? [];
+            final Map<String, dynamic> totals = data['totals'] ?? {};
+            
+            setState(() {
+              discountRecords = discountsList
+                  .map((json) => DiscountRecord.fromJson(json))
+                  .toList();
+              headerTitle = data['hdr_name']?.toString();
+              totalReceivedAmount = totals['total_received_amount']?.toString() ?? '0.00';
+              totalGivenAmount = totals['total_given_amount']?.toString() ?? '0.00';
+              isLoading = false;
+            });
+            
+            if (discountsList.isEmpty) {
+              _showInfo('No discount records found for $_customerName in the selected date range');
+            }
+          } else {
+            setState(() => isLoading = false);
+            _showError(data['message'] ?? 'Failed to fetch discount data.');
           }
-        } else {
-          _showError(data['message'] ?? 'Failed to fetch discount data.');
+        } catch (e) {
+          print('JSON Decode Error: $e');
+          print('Raw response: ${response.body}');
+          
+          // Try to fix common JSON issues
+          try {
+            String fixedJson = response.body.trim();
+            
+            // Remove any trailing commas before closing brackets
+            fixedJson = fixedJson.replaceAll(RegExp(r',\s*\}'), '}');
+            fixedJson = fixedJson.replaceAll(RegExp(r',\s*\]'), ']');
+            
+            final data = jsonDecode(fixedJson);
+            
+            if (data['result'] == "1") {
+              final List<dynamic> discountsList = data['discounts'] ?? [];
+              final Map<String, dynamic> totals = data['totals'] ?? {};
+              
+              setState(() {
+                discountRecords = discountsList
+                    .map((json) => DiscountRecord.fromJson(json))
+                    .toList();
+                headerTitle = data['hdr_name']?.toString();
+                totalReceivedAmount = totals['total_received_amount']?.toString() ?? '0.00';
+                totalGivenAmount = totals['total_given_amount']?.toString() ?? '0.00';
+                isLoading = false;
+              });
+              
+              _showInfo('Data loaded successfully with minor fixes');
+            } else {
+              setState(() => isLoading = false);
+              _showError(data['message'] ?? 'Failed to fetch discount data.');
+            }
+          } catch (fixError) {
+            print('JSON Fix Error: $fixError');
+            setState(() => isLoading = false);
+            _showError('Error processing server response: ${e.toString()}');
+          }
         }
       } else {
+        setState(() => isLoading = false);
         _showError('Server error: ${response.statusCode}. Please try again later.');
       }
     } catch (error) {
-      _showError('Network error occurred. Please check your connection and try again.');
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+      setState(() => isLoading = false);
+      print('\n' + '=' * 50);
+      print('DISCOUNT API ERROR:');
+      print('Error: $error');
+      print('=' * 50 + '\n');
+      
+      String errorMessage = 'An error occurred';
+      if (error.toString().contains('timeout')) {
+        errorMessage = 'Connection timeout. Please check your internet connection.';
+      } else if (error.toString().contains('SocketException')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else {
+        errorMessage = 'Error: $error';
       }
+      
+      _showError(errorMessage);
     }
   }
 
@@ -160,6 +248,25 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
         content: Text(message),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () {
+            setState(() => isLoading = true);
+            _fetchDiscountData();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showInfo(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -170,6 +277,7 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -753,418 +861,397 @@ class _AccountDiscountPageState extends State<AccountDiscountPage> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Date Selection Row
-            
-Row(
-  children: [
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'From Date',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: TextField(
-              controller: _fromDateController,
-              style: const TextStyle(
-                fontSize: 12, 
-                color: Colors.black87,
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
-              ),
-              readOnly: true,
-              onTap: () => _selectDate(context, _fromDateController, true),
-            ),
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 16),
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'To Date',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: TextField(
-              controller: _toDateController,
-              style: const TextStyle(
-                fontSize: 12, 
-                color: Colors.black87,
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
-              ),
-              readOnly: true,
-              onTap: () => _selectDate(context, _toDateController, false),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ],
-),
-            const SizedBox(height: 16),
-
-            // Excel and Print buttons
-Row(
-  mainAxisAlignment: MainAxisAlignment.end,
-  children: [
-    ElevatedButton.icon(
-      onPressed: _exportToExcel,
-      icon: const Icon(Icons.file_download, size: 12),
-      label: const Text('Excel'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-    const SizedBox(width: 6),
-    ElevatedButton.icon(
-      onPressed: _printDiscountReport,
-      icon: const Icon(Icons.print, size: 12),
-      label: const Text('Print'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 8),
-
-            // Report Title  
-            Center(
-              child: Text(
-                headerTitle?.replaceAll('&amp;', '&') ?? 
-                'Discount Report From ${_fromDateController.text} To ${_toDateController.text}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Summary Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Discount Received:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Text(
-                        '$totalReceivedAmount',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Discount Allowed:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Text(
-                        '$totalGivenAmount',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    height: 1,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Net Discount:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      Text(
-                        '${(double.parse(totalReceivedAmount.replaceAll(',', '')) - double.parse(totalGivenAmount.replaceAll(',', ''))).toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: (double.parse(totalReceivedAmount.replaceAll(',', '')) - double.parse(totalGivenAmount.replaceAll(',', ''))) >= 0 
-                              ? Colors.green 
-                              : Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Loading indicator or discount records
-            if (isLoading)
-              Center(
-                child: Column(
+      body: isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date Selection Row
+                Row(
                   children: [
-                    CircularProgressIndicator(
-                      color: Theme.of(context).primaryColor,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Loading discount data...',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else if (discountRecords.isEmpty)
-              Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 64,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No discount records found for $_customerName\nin the selected date range.',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_fromDateController.text} to ${_toDateController.text}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                  ],
-                ),
-              )
-            else
-              // Discount Records List
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Discount Records (${discountRecords.length})',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ...discountRecords.map((record) => Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                      
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                record.transactionType,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: record.transactionType == 'Discount Allowed' 
-                                      ? Colors.red.shade700
-                                      : Colors.green.shade700,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                record.discountDate,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Amount:',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black54,
-                              ),
-                            ),
-                            Text(
-                              record.transactionType == 'Discount Allowed' 
-                                  ? '${record.givenAmount}' 
-                                  : '${record.receivedAmount}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: record.transactionType == 'Discount Allowed' 
-                                    ? Colors.red 
-                                    : Colors.green,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (record.notes.isNotEmpty) ...[
-                          const SizedBox(height: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           const Text(
-                            'Notes:',
+                            'From Date',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: Colors.black87,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
-                              
                             ),
-                            child: Text(
-                              record.notes,
+                            child: TextField(
+                              controller: _fromDateController,
                               style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black54,
-                                height: 1.4,
+                                fontSize: 12, 
+                                color: Colors.black87,
                               ),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
+                              ),
+                              readOnly: true,
+                              onTap: () => _selectDate(context, _fromDateController, true),
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'To Date',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: TextField(
+                              controller: _toDateController,
+                              style: const TextStyle(
+                                fontSize: 12, 
+                                color: Colors.black87,
+                              ),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                suffixIcon: Icon(Icons.calendar_today, color: Colors.grey),
+                              ),
+                              readOnly: true,
+                              onTap: () => _selectDate(context, _toDateController, false),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Excel and Print buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _exportToExcel,
+                      icon: const Icon(Icons.file_download, size: 12),
+                      label: const Text('Excel'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[800],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ElevatedButton.icon(
+                      onPressed: _printDiscountReport,
+                      icon: const Icon(Icons.print, size: 12),
+                      label: const Text('Print'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Report Title  
+                Center(
+                  child: Text(
+                    headerTitle?.replaceAll('&amp;', '&') ?? 
+                    'Discount Report From ${_fromDateController.text} To ${_toDateController.text}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Summary Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Discount Received:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            '$totalReceivedAmount',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Discount Allowed:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            '$totalGivenAmount',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        height: 1,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Net Discount:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            '${(double.parse(totalReceivedAmount.replaceAll(',', '')) - double.parse(totalGivenAmount.replaceAll(',', ''))).toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: (double.parse(totalReceivedAmount.replaceAll(',', '')) - double.parse(totalGivenAmount.replaceAll(',', ''))) >= 0 
+                                  ? Colors.green 
+                                  : Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Discount Records
+                if (discountRecords.isEmpty)
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No discount records found for $_customerName\nin the selected date range.',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_fromDateController.text} to ${_toDateController.text}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
-                  )).toList(),
-                ],
-              ),
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Discount Records (${discountRecords.length})',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ...discountRecords.map((record) => Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    record.transactionType,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: record.transactionType == 'Discount Allowed' 
+                                          ? Colors.red.shade700
+                                          : Colors.green.shade700,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    record.discountDate,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Amount:',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                Text(
+                                  record.transactionType == 'Discount Allowed' 
+                                      ? '${record.givenAmount}' 
+                                      : '${record.receivedAmount}',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: record.transactionType == 'Discount Allowed' 
+                                        ? Colors.red 
+                                        : Colors.green,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (record.notes.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Notes:',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  record.notes,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      )).toList(),
+                    ],
+                  ),
 
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
     );
   }
 }
@@ -1189,11 +1276,11 @@ class DiscountRecord {
   factory DiscountRecord.fromJson(Map<String, dynamic> json) {
     return DiscountRecord(
       slNo: json['sl_no'] ?? 0,
-      discountDate: json['discount_date'] ?? '',
-      transactionType: json['transaction_type'] ?? '',
-      notes: json['notes'] ?? '',
-      receivedAmount: json['received_amount'] ?? '0.00',
-      givenAmount: json['given_amount'] ?? '0.00',
+      discountDate: json['discount_date']?.toString() ?? '',
+      transactionType: json['transaction_type']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      receivedAmount: json['received_amount']?.toString() ?? '0.00',
+      givenAmount: json['given_amount']?.toString() ?? '0.00',
     );
   }
 }

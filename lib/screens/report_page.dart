@@ -133,7 +133,7 @@ class _ReportPageState extends State<ReportPage> {
       ),
        
       bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 1, // Report page is at index 1
+        selectedIndex: 0, // Report page is at index 1
       ),
     );
   }

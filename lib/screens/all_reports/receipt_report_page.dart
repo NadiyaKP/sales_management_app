@@ -1352,7 +1352,7 @@ class _ReceiptReportPageState extends State<ReceiptReportPage> {
         ),
       ),
       bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 1, 
+        selectedIndex: 0, 
       ),
     );
   }

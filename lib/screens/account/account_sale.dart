@@ -70,9 +70,29 @@ class _AccountSalePageState extends State<AccountSalePage> {
       String? unid = prefs.getString('unid');
       String? slex = prefs.getString('slex');
 
+      if (url == null || unid == null || slex == null) {
+        setState(() => isLoading = false);
+        _showError('Missing configuration. Please login again.');
+        return;
+      }
+
       // Use provided customer info or default values
       String customerName = widget.customerName ?? "Aisha";
       String custId = widget.custId ?? "MTg-";
+
+      print('\n' + '=' * 50);
+      print('SALES API REQUEST:');
+      print('URL: $url/account-ledger.php');
+      print('Body: ${jsonEncode({
+        "unid": unid,
+        "slex": slex,
+        "customer_name": customerName,
+        "custid": custId,
+        "from_date": DateFormat('dd-MM-yyyy').format(_fromDate),
+        "to_date": DateFormat('dd-MM-yyyy').format(_toDate),
+        "style": "sales",
+      })}');
+      print('=' * 50);
 
       final response = await http.post(
         Uri.parse('$url/account-ledger.php'),
@@ -88,41 +108,121 @@ class _AccountSalePageState extends State<AccountSalePage> {
           "to_date": DateFormat('dd-MM-yyyy').format(_toDate),
           "style": "sales",
         }),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your internet connection.');
+        },
       );
       
+      print('\n' + '=' * 50);
+      print('SALES API RESPONSE:');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body Length: ${response.body.length} characters');
+      print('Full Response Body:');
+      print(response.body);
+      print('=' * 50 + '\n');
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] == "1") {
-          final List<dynamic> salesList = data['invoice_details'] ?? [];
-          final summaryData = data['totals'];
+        // Check if response body is empty
+        if (response.body.isEmpty) {
+          setState(() => isLoading = false);
+          _showError('Received empty response from server');
+          return;
+        }
+
+        try {
+          // First, try to clean the response body if needed
+          String cleanResponse = response.body.trim();
           
-          setState(() {
-            salesRecords = salesList
-                .map((json) => SalesRecord.fromJson(json))
-                .toList();
-            if (summaryData != null) {
-              summary = SalesSummary.fromJson(Map<String, dynamic>.from(summaryData));
+          // Remove any possible BOM or control characters at the start
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'^\uFEFF'), '');
+          
+          final data = jsonDecode(cleanResponse);
+          
+          if (data['result'] == "1") {
+            final List<dynamic> salesList = data['invoice_details'] ?? [];
+            final summaryData = data['totals'];
+            
+            setState(() {
+              salesRecords = salesList
+                  .map((json) => SalesRecord.fromJson(json))
+                  .toList();
+              if (summaryData != null) {
+                summary = SalesSummary.fromJson(Map<String, dynamic>.from(summaryData));
+              }
+              headerTitle = data['hdr_name'];
+              isLoading = false;
+            });
+            
+            if (salesList.isEmpty) {
+              _showInfo('No sales records found for ${widget.customerName ?? "the selected customer"} in the selected date range');
             }
-            headerTitle = data['hdr_name'];
-          });
-          
-          if (salesList.isEmpty) {
-            _showError('No sales records found for ${widget.customerName ?? "the selected customer"} in the selected date range');
+          } else {
+            setState(() => isLoading = false);
+            _showError(data['message'] ?? 'Failed to fetch sales data.');
           }
-        } else {
-          _showError(data['message'] ?? 'Failed to fetch sales data.');
+        } catch (e) {
+          print('JSON Decode Error: $e');
+          print('Raw response: ${response.body}');
+          
+          // Try to fix common JSON issues
+          try {
+            String fixedJson = response.body.trim();
+            
+            // Remove any trailing commas before closing brackets
+            fixedJson = fixedJson.replaceAll(RegExp(r',\s*\}'), '}');
+            fixedJson = fixedJson.replaceAll(RegExp(r',\s*\]'), ']');
+            
+            final data = jsonDecode(fixedJson);
+            
+            if (data['result'] == "1") {
+              final List<dynamic> salesList = data['invoice_details'] ?? [];
+              final summaryData = data['totals'];
+              
+              setState(() {
+                salesRecords = salesList
+                    .map((json) => SalesRecord.fromJson(json))
+                    .toList();
+                if (summaryData != null) {
+                  summary = SalesSummary.fromJson(Map<String, dynamic>.from(summaryData));
+                }
+                headerTitle = data['hdr_name'];
+                isLoading = false;
+              });
+              
+              _showInfo('Data loaded successfully with minor fixes');
+            } else {
+              setState(() => isLoading = false);
+              _showError(data['message'] ?? 'Failed to fetch sales data.');
+            }
+          } catch (fixError) {
+            print('JSON Fix Error: $fixError');
+            setState(() => isLoading = false);
+            _showError('Error processing server response: ${e.toString()}');
+          }
         }
       } else {
-        _showError('Error: ${response.statusCode}');
+        setState(() => isLoading = false);
+        _showError('Server error: ${response.statusCode}');
       }
     } catch (error) {
-      _showError('An error occurred: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+      setState(() => isLoading = false);
+      print('\n' + '=' * 50);
+      print('SALES API ERROR:');
+      print('Error: $error');
+      print('=' * 50 + '\n');
+      
+      String errorMessage = 'An error occurred';
+      if (error.toString().contains('timeout')) {
+        errorMessage = 'Connection timeout. Please check your internet connection.';
+      } else if (error.toString().contains('SocketException')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else {
+        errorMessage = 'Error: $error';
       }
+      
+      _showError(errorMessage);
     }
   }
 
@@ -133,6 +233,26 @@ class _AccountSalePageState extends State<AccountSalePage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () {
+            setState(() => isLoading = true);
+            _fetchSalesData();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showInfo(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -143,6 +263,7 @@ class _AccountSalePageState extends State<AccountSalePage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -801,38 +922,38 @@ class _AccountSalePageState extends State<AccountSalePage> {
                 ),
                 
                 const SizedBox(height: 8),
-             // Excel and Print buttons
-Row(
-  mainAxisAlignment: MainAxisAlignment.end,
-  children: [
-    ElevatedButton.icon(
-      onPressed: _exportToExcel,
-      icon: const Icon(Icons.file_download, size: 12),
-      label: const Text('Excel'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-    const SizedBox(width: 6),
-    ElevatedButton.icon(
-      onPressed: _printReport,
-      icon: const Icon(Icons.print, size: 12),
-      label: const Text('Print'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 8),
+                // Excel and Print buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _exportToExcel,
+                      icon: const Icon(Icons.file_download, size: 12),
+                      label: const Text('Excel'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[800],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ElevatedButton.icon(
+                      onPressed: _printReport,
+                      icon: const Icon(Icons.print, size: 12),
+                      label: const Text('Print'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 
                 // Customer name and date range
                 Text(
@@ -1169,12 +1290,12 @@ class SalesRecord {
       date: json['invoice_date'] ?? '',
       invoiceNumber: json['invoice_no'] ?? '',
       invId: json['invid'] ?? '',
-      beforeGst: json['before_gst'] ?? '',
-      gstAmount: json['gst_amount'] ?? '',
-      cessAmount: json['cess_amount'] ?? '',
-      discountAmount: json['discount_amount'] ?? '',
-      roundOff: json['roundoff'] ?? '',
-      totalAmount: json['total_amount'] ?? '',
+      beforeGst: json['before_gst']?.toString() ?? '',
+      gstAmount: json['gst_amount']?.toString() ?? '',
+      cessAmount: json['cess_amount']?.toString() ?? '',
+      discountAmount: json['discount_amount']?.toString() ?? '',
+      roundOff: json['roundoff']?.toString() ?? '',
+      totalAmount: json['total_amount']?.toString() ?? '',
     );
   }
 }
@@ -1204,15 +1325,15 @@ class SalesSummary {
 
   factory SalesSummary.fromJson(Map<String, dynamic> json) {
     return SalesSummary(
-      beforeTax: json['before_tax'] ?? '',
-      gstAmount: json['gst_amount'] ?? '',
-      cessAmount: json['cess_amount'] ?? '',
-      discountAmount: json['discount_amount'] ?? '',
-      roundOff: json['roundoff'] ?? '',
-      totalAmount: json['total_amount'] ?? '',
-      cgstAmount: json['cgst_amount'] ?? '',
-      sgstAmount: json['sgst_amount'] ?? '',
-      igstAmount: json['igst_amount'] ?? '',
+      beforeTax: json['before_tax']?.toString() ?? '',
+      gstAmount: json['gst_amount']?.toString() ?? '',
+      cessAmount: json['cess_amount']?.toString() ?? '',
+      discountAmount: json['discount_amount']?.toString() ?? '',
+      roundOff: json['roundoff']?.toString() ?? '',
+      totalAmount: json['total_amount']?.toString() ?? '',
+      cgstAmount: json['cgst_amount']?.toString() ?? '',
+      sgstAmount: json['sgst_amount']?.toString() ?? '',
+      igstAmount: json['igst_amount']?.toString() ?? '',
     );
   }
 }

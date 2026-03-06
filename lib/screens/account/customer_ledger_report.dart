@@ -43,7 +43,7 @@ class AccountLedgerReport {
       notes: json['notes'] ?? '',
       debit: json['debit']?.toString() ?? '0.00',
       credit: json['credit']?.toString() ?? '0.00',
-      balance: json['bln_due'] ?? json['balance'] ?? '0.00',
+      balance: json['bln_due']?.toString() ?? json['balance']?.toString() ?? '0.00',
     );
   }
 }
@@ -98,51 +98,185 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
     String? unid = prefs.getString('unid');
     String? slex = prefs.getString('slex');
 
+    if (url == null || unid == null || slex == null) {
+      setState(() => isLoading = false);
+      _showError('Missing configuration. Please login again.');
+      return;
+    }
+
     try {
+      // Prepare request body
+      final requestBody = {
+        "unid": unid,
+        "slex": slex,
+        "customer_name": widget.customerName,
+        "custid": widget.custId,
+        "from_date": _formatDateForApi(widget.fromDate),
+        "to_date": _formatDateForApi(widget.toDate),
+        "style": "ledger",
+      };
+
+      // Log API request
+      print('\n' + '=' * 50);
+      print('API REQUEST:');
+      print('URL: $url/account-ledger.php');
+      print('Headers: {"Content-Type": "application/json"}');
+      print('Body: ${jsonEncode(requestBody)}');
+      print('=' * 50);
+
       final response = await http.post(
         Uri.parse('$url/account-ledger.php'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "unid": unid,
-          "slex": slex,
-          "customer_name": widget.customerName,
-          "custid": widget.custId,
-          "from_date": _formatDateForApi(widget.fromDate),
-          "to_date": _formatDateForApi(widget.toDate),
-          "style": "ledger",
-        }),
+        body: jsonEncode(requestBody),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your internet connection.');
+        },
       );
 
+      // Log API response
+      print('\n' + '=' * 50);
+      print('API RESPONSE:');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body Length: ${response.body.length} characters');
+      print('Full Response Body:');
+      print(response.body);
+      print('=' * 50 + '\n');
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] == "1") {
-          final List<dynamic> accountLedgerList = data['cart_items'] ?? [];
-          setState(() {
-            filteredAccountLedgerReport = accountLedgerList
-                .map((json) => AccountLedgerReport.fromJson(json))
-                .toList();
-            closingBalance = data['cls_bln'] ?? '0.00';
-            totalCredit = data['ttl_cr_amt'] ?? '0.00';
-            totalDebit = data['ttl_dr_amt'] ?? '0.00';
-            receivedCheque = data['recv_chq'] ?? '0.00';
-            givenCheque = data['givn_chq'] ?? '0.00';
-            headerName = data['hdr_name'] ?? 'Account Ledger Report';
-            isLoading = false;
-          });
-          if (accountLedgerList.isEmpty) {
-            _showError('No account ledger data found');
-          }
-        } else {
+        // Check if response body is empty
+        if (response.body.isEmpty) {
           setState(() => isLoading = false);
-          _showError(data['message'] ?? 'Failed to fetch account ledger.');
+          _showError('Received empty response from server');
+          return;
+        }
+
+        // Try to decode JSON with error handling
+        try {
+          // First, try to clean the response body if needed
+          String cleanResponse = response.body.trim();
+          
+          // Sometimes the response might have BOM or other invisible characters
+          // Remove any possible BOM or control characters at the start
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'^\uFEFF'), '');
+          
+          final data = jsonDecode(cleanResponse);
+          
+          if (data['result'] == "1") {
+            final List<dynamic> accountLedgerList = data['cart_items'] ?? [];
+            
+            // Process the opening balance item if it exists
+            List<AccountLedgerReport> processedList = [];
+            
+            for (var item in accountLedgerList) {
+              // Handle opening balance item specially if it doesn't have all fields
+              if (item['type_of_trn'] == 'Opening Balance' && (item['led_date'] == null || item['led_date'] == '')) {
+                // Create a proper ledger entry for opening balance with the from date
+                processedList.add(AccountLedgerReport(
+                  date: _formatDateForApi(widget.fromDate),
+                  voucherId: '',
+                  voucherNo: '',
+                  typeOfTransactions: 'Opening Balance',
+                  notes: 'Opening Balance',
+                  debit: item['debit']?.toString() ?? '0.00',
+                  credit: item['credit']?.toString() ?? '0.00',
+                  balance: item['debit']?.toString() ?? '0.00',
+                ));
+              } else {
+                processedList.add(AccountLedgerReport.fromJson(item));
+              }
+            }
+
+            setState(() {
+              filteredAccountLedgerReport = processedList;
+              closingBalance = data['cls_bln']?.toString() ?? '0.00';
+              totalCredit = data['ttl_cr_amt']?.toString() ?? '0.00';
+              totalDebit = data['ttl_dr_amt']?.toString() ?? '0.00';
+              receivedCheque = data['recv_chq']?.toString() ?? '0.00';
+              givenCheque = data['givn_chq']?.toString() ?? '0.00';
+              headerName = data['hdr_name']?.toString() ?? 'Account Ledger Report';
+              isLoading = false;
+            });
+
+            if (processedList.isEmpty) {
+              _showInfo('No account ledger data found for the selected period');
+            }
+          } else {
+            setState(() => isLoading = false);
+            _showError(data['message'] ?? 'Failed to fetch account ledger.');
+          }
+        } catch (e) {
+          print('JSON Decode Error: $e');
+          print('Raw response: ${response.body}');
+          
+          // Try to fix common JSON issues
+          try {
+            // Sometimes the response might have trailing commas or other issues
+            // This is a last resort - try to manually fix common JSON problems
+            String fixedJson = response.body.trim();
+            
+            // Remove any trailing commas before closing brackets
+            fixedJson = fixedJson.replaceAll(RegExp(r',\s*\}'), '}');
+            fixedJson = fixedJson.replaceAll(RegExp(r',\s*\]'), ']');
+            
+            // Try to decode again
+            final data = jsonDecode(fixedJson);
+            
+            if (data['result'] == "1") {
+              final List<dynamic> accountLedgerList = data['cart_items'] ?? [];
+              
+              setState(() {
+                filteredAccountLedgerReport = accountLedgerList
+                    .map((json) => AccountLedgerReport.fromJson(json))
+                    .toList();
+                closingBalance = data['cls_bln']?.toString() ?? '0.00';
+                totalCredit = data['ttl_cr_amt']?.toString() ?? '0.00';
+                totalDebit = data['ttl_dr_amt']?.toString() ?? '0.00';
+                receivedCheque = data['recv_chq']?.toString() ?? '0.00';
+                givenCheque = data['givn_chq']?.toString() ?? '0.00';
+                headerName = data['hdr_name']?.toString() ?? 'Account Ledger Report';
+                isLoading = false;
+              });
+              
+              _showInfo('Data loaded successfully with minor fixes');
+            } else {
+              setState(() => isLoading = false);
+              _showError(data['message'] ?? 'Failed to fetch account ledger.');
+            }
+          } catch (fixError) {
+            print('JSON Fix Error: $fixError');
+            setState(() => isLoading = false);
+            
+            // Check if it's a truncation issue
+            if (response.body.contains('2,084.') && !response.body.contains('}')) {
+              _showError('Server response was cut off. Please contact support.');
+            } else {
+              _showError('Error processing server response: ${e.toString()}');
+            }
+          }
         }
       } else {
         setState(() => isLoading = false);
-        _showError('Error: ${response.statusCode}');
+        _showError('Server error: ${response.statusCode}');
       }
     } catch (error) {
       setState(() => isLoading = false);
-      _showError('An error occurred: $error');
+      print('\n' + '=' * 50);
+      print('API ERROR:');
+      print('Error: $error');
+      print('=' * 50 + '\n');
+      
+      String errorMessage = 'An error occurred';
+      if (error.toString().contains('timeout')) {
+        errorMessage = 'Connection timeout. Please check your internet connection.';
+      } else if (error.toString().contains('SocketException')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else {
+        errorMessage = 'Error: $error';
+      }
+      
+      _showError(errorMessage);
     }
   }
 
@@ -151,7 +285,27 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
       backgroundColor: Colors.red,
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(
+        label: 'Retry',
+        textColor: Colors.white,
+        onPressed: () {
+          setState(() => isLoading = true);
+          fetchAccountLedger();
+        },
+      ),
     ));
+  }
+
+  void _showInfo(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _showSuccess(String message) {
@@ -160,6 +314,7 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -176,7 +331,7 @@ class _CustomerLedgerReportPageState extends State<CustomerLedgerReportPage> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-String formatTransactionValue(String debit, String credit, String transactionType) {
+  String formatTransactionValue(String debit, String credit, String transactionType) {
     double debitAmount = double.tryParse(debit.replaceAll(',', '')) ?? 0.0;
     double creditAmount = double.tryParse(credit.replaceAll(',', '')) ?? 0.0;
     if (debitAmount > 0) {
@@ -763,37 +918,37 @@ String formatTransactionValue(String debit, String credit, String transactionTyp
                 const SizedBox(height: 8),
                 
                 // Excel and Print buttons
-Row(
-  mainAxisAlignment: MainAxisAlignment.end,
-  children: [
-    ElevatedButton.icon(
-      onPressed: _exportToExcel,
-      icon: const Icon(Icons.file_download, size: 12),
-      label: const Text('Excel'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-    const SizedBox(width: 6),
-    ElevatedButton.icon(
-      onPressed: _printReport,
-      icon: const Icon(Icons.print, size: 12),
-      label: const Text('Print'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _exportToExcel,
+                      icon: const Icon(Icons.file_download, size: 12),
+                      label: const Text('Excel'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[800],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ElevatedButton.icon(
+                      onPressed: _printReport,
+                      icon: const Icon(Icons.print, size: 12),
+                      label: const Text('Print'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 
                 // Customer name and date range
                 Text(
@@ -884,92 +1039,101 @@ const SizedBox(height: 8),
                         ),
                       ),
                       
- // Ledger entries
-...filteredAccountLedgerReport.map((ledger) {
-  final transactionValue = formatTransactionValue(ledger.debit, ledger.credit, ledger.typeOfTransactions);
-  
-  return Card(
-    elevation: 2,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: BorderSide(color: Colors.grey.shade300, width: 1),
-    ),
-    margin: const EdgeInsets.only(bottom: 16),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  ledger.typeOfTransactions,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold, 
-                    fontSize: 12.0,  
-                    color: Colors.indigo
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                transactionValue,
-                style: TextStyle(
-                  fontSize: 16.0,  
-                  color: transactionValue.startsWith('+') ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (ledger.debit != "0.00" && ledger.debit.isNotEmpty) ...[
-            Row(
-              children: [
-                const Text('Debit: ', style: TextStyle(fontWeight: FontWeight.w500)),
-                Text(formatCurrency(ledger.debit), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 4),
-          ],
-          if (ledger.balance.isNotEmpty) ...[
-            Row(
-              children: [
-                const Text('Balance: ', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-                Text(ledger.balance, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              ],
-            ),
-            const SizedBox(height: 4),
-          ],
-          Row(
-            children: [
-              const Text('Date: ', style: TextStyle(fontWeight: FontWeight.w500)),
-              Text(_getDisplayDate(ledger), style: const TextStyle(color: Colors.grey)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Notes: ', style: TextStyle(fontWeight: FontWeight.w500)),
-              Expanded(
-                child: Text(
-                  ledger.notes.isNotEmpty ? ledger.notes : '',
-                  style: TextStyle(
-                    color: ledger.notes.isNotEmpty ? Colors.black87 : Colors.grey,
-                    fontStyle: ledger.notes.isNotEmpty ? FontStyle.normal : FontStyle.italic,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-})
+                      // Ledger entries
+                      ...filteredAccountLedgerReport.map((ledger) {
+                        final transactionValue = formatTransactionValue(ledger.debit, ledger.credit, ledger.typeOfTransactions);
+                        
+                        return Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.shade300, width: 1),
+                          ),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        ledger.typeOfTransactions,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold, 
+                                          fontSize: 12.0,  
+                                          color: Colors.indigo
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Text(
+                                      transactionValue,
+                                      style: TextStyle(
+                                        fontSize: 16.0,  
+                                        color: transactionValue.startsWith('+') ? Colors.green : Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                if (ledger.debit != "0.00" && ledger.debit.isNotEmpty) ...[
+                                  Row(
+                                    children: [
+                                      const Text('Debit: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                                      Text(formatCurrency(ledger.debit), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                ],
+                                if (ledger.credit != "0.00" && ledger.credit.isNotEmpty && !ledger.typeOfTransactions.toLowerCase().contains('opening')) ...[
+                                  Row(
+                                    children: [
+                                      const Text('Credit: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                                      Text(formatCurrency(ledger.credit), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                ],
+                                if (ledger.balance.isNotEmpty) ...[
+                                  Row(
+                                    children: [
+                                      const Text('Balance: ', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                                      Text(ledger.balance, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                ],
+                                Row(
+                                  children: [
+                                    const Text('Date: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                                    Text(_getDisplayDate(ledger), style: const TextStyle(color: Colors.grey)),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Notes: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                                    Expanded(
+                                      child: Text(
+                                        ledger.notes.isNotEmpty ? ledger.notes : '',
+                                        style: TextStyle(
+                                          color: ledger.notes.isNotEmpty ? Colors.black87 : Colors.grey,
+                                          fontStyle: ledger.notes.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
                     ],
                   ),
           ),
@@ -979,19 +1143,19 @@ const SizedBox(height: 8),
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text('${widget.customerName} Ledger Report'),
-      centerTitle: true,
-      backgroundColor: AppTheme.primaryColor,
-      foregroundColor: Colors.white,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: () => Navigator.of(context).pop(),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.customerName} Ledger Report'),
+        centerTitle: true,
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
-    ),
-    body: isLoading ? const Center(child: CircularProgressIndicator()) : _buildLedgerReport(),
-  );
-}
+      body: isLoading ? const Center(child: CircularProgressIndicator()) : _buildLedgerReport(),
+    );
+  }
 }

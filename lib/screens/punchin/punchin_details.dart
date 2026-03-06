@@ -824,7 +824,7 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Punch-in Details'),
+        title: const Text('PUNCH-IN DETAILS'),
         backgroundColor: AppTheme.primaryColor,
         centerTitle: true,
         leading: IconButton(
@@ -859,163 +859,167 @@ class _PunchInDetailsPageState extends State<PunchInDetailsPage> {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.grey.shade200, width: 0.5),
                           ),
-                          child: Column(
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(8),
-                                    topRight: Radius.circular(8),
-                                  ),
+                         child: Column(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Color.fromARGB(255, 5, 38, 76).withOpacity(0.08),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  topRight: Radius.circular(8),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        _capitalizeWords(punchIn.custname),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color.fromARGB(255, 5, 38, 76),
-                                        ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _capitalizeWords(punchIn.custname),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color.fromARGB(255, 5, 38, 76),
                                       ),
                                     ),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.calendar_today,
-                                          size: 11,
-                                          color: Colors.grey.shade600,
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today,
+                                        size: 11,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        _formatDate(punchIn.date),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey.shade700,
                                         ),
-                                        const SizedBox(width: 2),
-                                        Text(
-                                          _formatDate(punchIn.date),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey.shade700,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.grey.shade200, width: 0.5),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Location',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  color: Colors.grey.shade600,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                _capitalizeWords(punchIn.location),
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          height: 24,
+                                          width: 1,
+                                          color: Colors.grey.shade300,
+                                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                                        ),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                'Notes',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  color: Colors.grey.shade600,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                punchIn.notes.isEmpty ? 'No notes' : _capitalizeWords(punchIn.notes),
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.black54
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade50,
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: Colors.grey.shade200, width: 0.5),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Location',
-                                                  style: TextStyle(
-                                                    fontSize: 9,
-                                                    color: Colors.grey.shade600,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  _capitalizeWords(punchIn.location),
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.black87,
-                                                  ),
-                                                ),
-                                              ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Align(
+                                    alignment: Alignment.bottomRight,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Color.fromARGB(255, 5, 38, 76),
+                                            foregroundColor: Colors.white,
+                                            elevation: 1,
+                                            padding: const EdgeInsets.all(4),
+                                            minimumSize: const Size(28, 28),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(4),
                                             ),
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                           ),
-                                          Container(
-                                            height: 24,
-                                            width: 1,
-                                            color: Colors.grey.shade300,
-                                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                                          ),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  'Notes',
-                                                  style: TextStyle(
-                                                    fontSize: 9,
-                                                    color: Colors.grey.shade600,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  punchIn.notes.isEmpty ? 'No notes' : _capitalizeWords(punchIn.notes),
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.black54
-                                                  ),
-                                                ),
-                                              ],
+                                          onPressed: () => _editPunchIn(punchIn),
+                                          child: const Icon(Icons.edit, size: 10, color: Colors.white),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red.shade600,
+                                            foregroundColor: Colors.white,
+                                            elevation: 1,
+                                            padding: const EdgeInsets.all(4),
+                                            minimumSize: const Size(28, 28),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(4),
                                             ),
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                           ),
-                                        ],
-                                      ),
+                                          onPressed: () => _deletePunchIn(punchIn),
+                                          child: const Icon(Icons.delete, size: 10, color: Colors.white),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Align(
-                                      alignment: Alignment.bottomRight,
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        children: [
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Color.fromARGB(255, 5, 38, 76),
-                                              foregroundColor: Colors.white,
-                                              elevation: 1,
-                                              padding: const EdgeInsets.all(6),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                            ),
-                                            onPressed: () => _editPunchIn(punchIn),
-                                            child: const Icon(Icons.edit, size: 12, color: Colors.white),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.red.shade600,
-                                              foregroundColor: Colors.white,
-                                              elevation: 1,
-                                              padding: const EdgeInsets.all(6),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                            ),
-                                            onPressed: () => _deletePunchIn(punchIn),
-                                            child: const Icon(Icons.delete, size: 12, color: Colors.white),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
                         ),
                       );
                     },

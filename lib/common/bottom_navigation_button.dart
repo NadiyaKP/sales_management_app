@@ -497,61 +497,55 @@ class _BottomNavigationButtonState extends State<BottomNavigationButton> {
     );
   }
 
-  // ─── Logout ──────────────────────────────────────────────────────────────────
+ // ─── Logout ──────────────────────────────────────────────────────────────────
 
-  void _handleLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.logout, color: Colors.red.shade600, size: 24),
-            const SizedBox(width: 8),
-            const Text('Logout',
-                style:
-                    TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text('Are you sure you want to logout?',
-            style: TextStyle(fontSize: 16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel',
-                style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500)),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool('isRegistered', false);
-              await prefs.remove('username');
-              await prefs.remove('password');
-              await prefs.remove('slex');
-              await prefs.remove('selected_finid');
-              await prefs.remove('selected_financial_year');
-              await prefs.remove('current_financial_year');
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const LoginPage()),
-                  (route) => false,
-                );
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Logout',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
+void _handleLogout(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Icon(Icons.logout, color: Colors.red.shade600, size: 24),
+          const SizedBox(width: 8),
+          const Text('Logout',
+              style:
+                  TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         ],
       ),
-    );
-  }
+      content: const Text('Are you sure you want to logout?',
+          style: TextStyle(fontSize: 16)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel',
+              style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500)),
+        ),
+        TextButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            
+            // Just navigate to login page without removing any data
+            if (context.mounted) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            }
+          },
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Logout',
+              style: TextStyle(fontWeight: FontWeight.w600)),
+        ),
+      ],
+    ),
+  );
+}
 
   // ─── Build ───────────────────────────────────────────────────────────────────
 

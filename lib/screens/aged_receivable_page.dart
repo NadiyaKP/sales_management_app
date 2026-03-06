@@ -9,6 +9,7 @@ import '../utils/constants.dart';
 import '../services/api_service.dart';
 import '../services/permission.dart';
 import 'invoice/invoice_view.dart';
+import '../common/bottom_navigation_button.dart';
 
 // Data Models
 class AgedInvoice {
@@ -567,18 +568,8 @@ class _AgedReceivableReportPageState extends State<AgedReceivableReportPage> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: AppConstants.bottomNavItems.map((item) {
-          return BottomNavigationBarItem(
-            icon: Icon(item['icon']),
-            label: item['title'],
-          );
-        }).toList(),
+      bottomNavigationBar: const BottomNavigationButton(
+        selectedIndex: 0,
       ),
     );
   }

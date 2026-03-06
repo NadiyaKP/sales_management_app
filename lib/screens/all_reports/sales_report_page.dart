@@ -1138,7 +1138,7 @@ const SizedBox(height: 8),
         ),
       ),
       bottomNavigationBar: const BottomNavigationButton(
-        selectedIndex: 1,
+        selectedIndex: 0,
       ),
     );
   }

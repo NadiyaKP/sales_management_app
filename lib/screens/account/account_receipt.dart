@@ -86,6 +86,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
       String? slex = prefs.getString('slex');
 
       if (url == null || unid == null || slex == null) {
+        setState(() => isLoading = false);
         _showError('Missing configuration. Please check your settings.');
         return;
       }
@@ -93,8 +94,21 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
       String customerName = currentCustomerName ?? "Unknown Customer";
       String custId = currentCustId ?? "";
 
-      print('Fetching receipt data for: $customerName (ID: $custId)');
+      print('\n' + '=' * 50);
+      print('RECEIPT API REQUEST:');
+      print('URL: $url/account-ledger.php');
+      print('Customer: $customerName (ID: $custId)');
       print('Date range: ${DateFormat('dd-MM-yyyy').format(_fromDate)} to ${DateFormat('dd-MM-yyyy').format(_toDate)}');
+      print('Body: ${jsonEncode({
+        "unid": unid,
+        "slex": slex,
+        "customer_name": customerName,
+        "custid": custId,
+        "from_date": DateFormat('dd-MM-yyyy').format(_fromDate),
+        "to_date": DateFormat('dd-MM-yyyy').format(_toDate),
+        "style": "receipt",
+      })}');
+      print('=' * 50);
 
       final response = await http.post(
         Uri.parse('$url/account-ledger.php'),
@@ -110,49 +124,121 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
           "to_date": DateFormat('dd-MM-yyyy').format(_toDate),
           "style": "receipt",
         }),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Connection timeout. Please check your internet connection.');
+        },
       );
       
-      print('API Response Status: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
+      print('\n' + '=' * 50);
+      print('RECEIPT API RESPONSE:');
+      print('Status Code: ${response.statusCode}');
+      print('Response Body Length: ${response.body.length} characters');
+      print('Full Response Body:');
+      print(response.body);
+      print('=' * 50 + '\n');
       
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] == "1") {
-          final List<dynamic> receiptList = data['receipts'] ?? [];
+        // Check if response body is empty
+        if (response.body.isEmpty) {
+          setState(() => isLoading = false);
+          _showError('Received empty response from server');
+          return;
+        }
+
+        try {
+          // First, try to clean the response body if needed
+          String cleanResponse = response.body.trim();
           
-          setState(() {
-            receiptRecords = receiptList
-                .map((json) => ReceiptRecord.fromJson(json))
-                .toList();
-            totalAmount = data['total_amount'] ?? '0.00';
-            headerTitle = data['hdr_name'] ?? 'Receipt Report';
-          });
+          // Remove any possible BOM or control characters at the start
+          cleanResponse = cleanResponse.replaceAll(RegExp(r'^\uFEFF'), '');
           
-          print('Found ${receiptRecords.length} receipt records');
+          final data = jsonDecode(cleanResponse);
           
-          if (receiptList.isEmpty) {
-            _showError('No receipt records found for $customerName in the selected date range');
+          if (data['result'] == "1") {
+            final List<dynamic> receiptList = data['receipts'] ?? [];
+            
+            setState(() {
+              receiptRecords = receiptList
+                  .map((json) => ReceiptRecord.fromJson(json))
+                  .toList();
+              totalAmount = data['total_amount']?.toString() ?? '0.00';
+              headerTitle = data['hdr_name']?.toString() ?? 'Receipt Report';
+              isLoading = false;
+            });
+            
+            print('Found ${receiptRecords.length} receipt records');
+            
+            if (receiptList.isEmpty) {
+              _showInfo('No receipt records found for $customerName in the selected date range');
+            }
+          } else {
+            setState(() => isLoading = false);
+            String errorMessage = data['message'] ?? 'Failed to fetch receipt data.';
+            _showError(errorMessage);
+            print('API Error: $errorMessage');
           }
-        } else {
-          String errorMessage = data['message'] ?? 'Failed to fetch receipt data.';
-          _showError(errorMessage);
-          print('API Error: $errorMessage');
+        } catch (e) {
+          print('JSON Decode Error: $e');
+          print('Raw response: ${response.body}');
+          
+          // Try to fix common JSON issues
+          try {
+            String fixedJson = response.body.trim();
+            
+            // Remove any trailing commas before closing brackets
+            fixedJson = fixedJson.replaceAll(RegExp(r',\s*\}'), '}');
+            fixedJson = fixedJson.replaceAll(RegExp(r',\s*\]'), ']');
+            
+            final data = jsonDecode(fixedJson);
+            
+            if (data['result'] == "1") {
+              final List<dynamic> receiptList = data['receipts'] ?? [];
+              
+              setState(() {
+                receiptRecords = receiptList
+                    .map((json) => ReceiptRecord.fromJson(json))
+                    .toList();
+                totalAmount = data['total_amount']?.toString() ?? '0.00';
+                headerTitle = data['hdr_name']?.toString() ?? 'Receipt Report';
+                isLoading = false;
+              });
+              
+              _showInfo('Data loaded successfully with minor fixes');
+            } else {
+              setState(() => isLoading = false);
+              _showError(data['message'] ?? 'Failed to fetch receipt data.');
+            }
+          } catch (fixError) {
+            print('JSON Fix Error: $fixError');
+            setState(() => isLoading = false);
+            _showError('Error processing server response: ${e.toString()}');
+          }
         }
       } else {
+        setState(() => isLoading = false);
         String errorMessage = 'Server Error: ${response.statusCode}';
         _showError(errorMessage);
         print('HTTP Error: $errorMessage');
       }
     } catch (error) {
-      String errorMessage = 'An error occurred: $error';
-      _showError(errorMessage);
-      print('Exception: $error');
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+      setState(() => isLoading = false);
+      print('\n' + '=' * 50);
+      print('RECEIPT API ERROR:');
+      print('Error: $error');
+      print('=' * 50 + '\n');
+      
+      String errorMessage = 'An error occurred';
+      if (error.toString().contains('timeout')) {
+        errorMessage = 'Connection timeout. Please check your internet connection.';
+      } else if (error.toString().contains('SocketException')) {
+        errorMessage = 'Network error. Please check your connection.';
+      } else {
+        errorMessage = 'Error: $error';
       }
+      
+      _showError(errorMessage);
     }
   }
 
@@ -164,6 +250,25 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
         content: Text(message),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () {
+            setState(() => isLoading = true);
+            _fetchReceiptData();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showInfo(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -174,6 +279,7 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -745,37 +851,37 @@ class _AccountReceiptPageState extends State<AccountReceiptPage> {
                 const SizedBox(height: 8),
                 
                 // Excel and Print buttons
-Row(
-  mainAxisAlignment: MainAxisAlignment.end,
-  children: [
-    ElevatedButton.icon(
-      onPressed: _exportToExcel,
-      icon: const Icon(Icons.file_download, size: 12),
-      label: const Text('Excel'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-    const SizedBox(width: 6),
-    ElevatedButton.icon(
-      onPressed: _printReport,
-      icon: const Icon(Icons.print, size: 12),
-      label: const Text('Print'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        textStyle: const TextStyle(fontSize: 10),
-        minimumSize: const Size(60, 28),
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _exportToExcel,
+                      icon: const Icon(Icons.file_download, size: 12),
+                      label: const Text('Excel'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[800],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ElevatedButton.icon(
+                      onPressed: _printReport,
+                      icon: const Icon(Icons.print, size: 12),
+                      label: const Text('Print'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 10),
+                        minimumSize: const Size(60, 28),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 
                 // Customer name and date range
                 Text(
@@ -1038,12 +1144,12 @@ class ReceiptRecord {
   factory ReceiptRecord.fromJson(Map<String, dynamic> json) {
     return ReceiptRecord(
       slNo: json['sl_no'] ?? 0,
-      paidDate: json['paid_date'] ?? '',
-      receiptNo: json['receipt_no'] ?? '',
-      rcpid: json['rcpid'] ?? '',
-      walletName: json['wallet_name'] ?? '',
-      notes: json['notes'] ?? '',
-      paidAmount: json['paid_amount'] ?? '',
+      paidDate: json['paid_date']?.toString() ?? '',
+      receiptNo: json['receipt_no']?.toString() ?? '',
+      rcpid: json['rcpid']?.toString() ?? '',
+      walletName: json['wallet_name']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      paidAmount: json['paid_amount']?.toString() ?? '',
     );
   }
 }

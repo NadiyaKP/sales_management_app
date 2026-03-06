@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../services/api_service.dart';
 import '../services/permission.dart';
+import '../../common/bottom_navigation_button.dart';
 
 // Global permission variables
 String debitors = '';
@@ -360,18 +361,8 @@ class _DebitorsPageState extends State<DebitorsPage> {
                 ],
               ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: AppConstants.bottomNavItems.map((item) {
-          return BottomNavigationBarItem(
-            icon: Icon(item['icon']),
-            label: item['title'],
-          );
-        }).toList(),
+      bottomNavigationBar: const BottomNavigationButton(
+        selectedIndex: 0,
       ),
     );
   }

@@ -10,6 +10,7 @@ import '../all_report_page.dart';
 import '../../services/api_service.dart';
 import '../../services/permission.dart';
 import '../receipts/receipt_view.dart';
+import '../../common/bottom_navigation_button.dart';
 
 String customerLedger = '';
 String ledgerExcel = '';
@@ -665,18 +666,8 @@ class _MyLedgerReportPageState extends State<MyLedgerReportPage> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: AppConstants.bottomNavItems.map((item) {
-          return BottomNavigationBarItem(
-            icon: Icon(item['icon']),
-            label: item['title'],
-          );
-        }).toList(),
+       bottomNavigationBar: const BottomNavigationButton(
+        selectedIndex: 0,
       ),
     );
   }
